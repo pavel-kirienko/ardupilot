@@ -1262,6 +1262,9 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
         mavlink_set_mode_t packet;
         mavlink_msg_set_mode_decode(msg, &packet);
 
+        // Courierdrone logic assumes that every mode change resets the integrators:
+        reset_I_all();
+
         if (!(packet.base_mode & MAV_MODE_FLAG_CUSTOM_MODE_ENABLED)) {
             // we ignore base_mode as there is no sane way to map
             // from that bitmap to a APM flight mode. We rely on
@@ -1907,12 +1910,19 @@ mission_failed:
         v[5] = packet.chan6_raw;
         v[6] = packet.chan7_raw;
         v[7] = packet.chan8_raw;
-        hal.rcin->set_overrides(v, 8);
+#if COURIERDRONE_MANUAL_THRUST_YAW
+        v[2] = v[3] = 0;        // clear override
+#endif
 
         // record that rc are overwritten so we can trigger a failsafe if we lose contact with groundstation
         ap.rc_override_active = true;
         // a RC override message is consiered to be a 'heartbeat' from the ground station for failsafe purposes
         last_heartbeat_ms = millis();
+
+        crdr_reset_autopilot_input_timeout();
+        if (!crdr_manual)
+            hal.rcin->set_overrides(v, 8);
+
         break;
     }
 

@@ -9,74 +9,21 @@
 // called at 10hz
 static void arm_motors_check()
 {
-    static int16_t arming_counter;
-
-    // ensure throttle is down
-    if (g.rc_3.control_in > 0) {
-        arming_counter = 0;
+    if (!motors.armed() == !crdr_armed)
         return;
+
+    if (crdr_armed)
+    {
+        pre_arm_checks(true);
+        if (!ap.pre_arm_check)
+            return;
+        init_arm_motors();
+        gcs_send_text_P(SEVERITY_HIGH, PSTR("ARMED"));
     }
-
-    // ensure we are in Stabilize, Acro or TOY mode
-    if ((control_mode > ACRO) && ((control_mode != TOY_A) && (control_mode != TOY_M))) {
-        arming_counter = 0;
-        return;
-    }
-	
-	#if FRAME_CONFIG == HELI_FRAME
-	if ((motors.rsc_mode > 0) && (g.rc_8.control_in >= 10)){
-		arming_counter = 0;
-		return;
-	}
-	#endif  // HELI_FRAME
-
-#if TOY_EDF == ENABLED
-    int16_t tmp = g.rc_1.control_in;
-#else
-    int16_t tmp = g.rc_4.control_in;
-#endif
-
-    // full right
-    if (tmp > 4000) {
-
-        // increase the arming counter to a maximum of 1 beyond the auto trim counter
-        if( arming_counter <= AUTO_TRIM_DELAY ) {
-            arming_counter++;
-        }
-
-        // arm the motors and configure for flight
-        if (arming_counter == ARM_DELAY && !motors.armed()) {
-            // run pre-arm-checks and display failures
-            pre_arm_checks(true);
-            if(ap.pre_arm_check) {
-                init_arm_motors();
-            }else{
-                // reset arming counter if pre-arm checks fail
-                arming_counter = 0;
-            }
-        }
-
-        // arm the motors and configure for flight
-        if (arming_counter == AUTO_TRIM_DELAY && motors.armed()) {
-            auto_trim_counter = 250;
-        }
-
-    // full left
-    }else if (tmp < -4000) {
-
-        // increase the counter to a maximum of 1 beyond the disarm delay
-        if( arming_counter <= DISARM_DELAY ) {
-            arming_counter++;
-        }
-
-        // disarm the motors
-        if (arming_counter == DISARM_DELAY && motors.armed()) {
-            init_disarm_motors();
-        }
-
-    // Yaw is centered so reset arming counter
-    }else{
-        arming_counter = 0;
+    else
+    {
+        init_disarm_motors();
+        gcs_send_text_P(SEVERITY_HIGH, PSTR("DISARMED"));
     }
 }
 
@@ -84,19 +31,7 @@ static void arm_motors_check()
 // called at 1hz
 static void auto_disarm_check()
 {
-    static uint8_t auto_disarming_counter;
-
-    if((control_mode <= ACRO) && (g.rc_3.control_in == 0) && motors.armed()) {
-        auto_disarming_counter++;
-
-        if(auto_disarming_counter == AUTO_DISARMING_DELAY) {
-            init_disarm_motors();
-        }else if (auto_disarming_counter > AUTO_DISARMING_DELAY) {
-            auto_disarming_counter = AUTO_DISARMING_DELAY + 1;
-        }
-    }else{
-        auto_disarming_counter = 0;
-    }
+    // No need to autodisarm anything
 }
 
 // init_arm_motors - performs arming process including initialisation of barometer and gyros
