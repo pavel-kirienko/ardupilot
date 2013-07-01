@@ -424,6 +424,11 @@ static void NOINLINE send_raw_imu1(mavlink_channel_t chan)
 {
     Vector3f accel = ins.get_accel();
     Vector3f gyro = ins.get_gyro();
+
+    /*
+     * Here we do a dirty hack!
+     * Replacing the magnetometer readings with the orientation angles!
+     */
     mavlink_msg_raw_imu_send(
         chan,
         micros(),
@@ -433,9 +438,9 @@ static void NOINLINE send_raw_imu1(mavlink_channel_t chan)
         gyro.x * 1000.0f,
         gyro.y * 1000.0f,
         gyro.z * 1000.0f,
-        compass.mag_x,
-        compass.mag_y,
-        compass.mag_z);
+        ahrs.roll  * 10000.0f,      // right here.
+        ahrs.pitch * 10000.0f,      // watch closely.
+        ahrs.yaw   * 10000.0f);     // isn't that terrible?
 }
 
 static void NOINLINE send_raw_imu2(mavlink_channel_t chan)
@@ -1467,7 +1472,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
 
     case MAVLINK_MSG_ID_PARAM_REQUEST_LIST:     // 21
     {
-        // gcs_send_text_P(SEVERITY_LOW,PSTR("param request list"));
+        gcs_send_text_P(SEVERITY_LOW,PSTR("param request list"));
 
         // decode
         mavlink_param_request_list_t packet;
@@ -1914,15 +1919,17 @@ mission_failed:
         v[2] = v[3] = 0;        // clear override
 #endif
 
-        // record that rc are overwritten so we can trigger a failsafe if we lose contact with groundstation
-        ap.rc_override_active = true;
         // a RC override message is consiered to be a 'heartbeat' from the ground station for failsafe purposes
         last_heartbeat_ms = millis();
 
         crdr_reset_autopilot_input_timeout();
-        if (!crdr_manual)
-            hal.rcin->set_overrides(v, 8);
 
+        if (!crdr_manual)
+        {
+            hal.rcin->set_overrides(v, 8);
+            // record that rc are overwritten so we can trigger a failsafe if we lose contact with groundstation
+            ap.rc_override_active = true;
+        }
         break;
     }
 

@@ -89,6 +89,7 @@ static void update_mode()
     {
         hal.rcin->clear_overrides();
         crdr_manual = true;
+        ap.rc_override_active = false;
     }
     else
         crdr_manual = false;
@@ -103,7 +104,7 @@ static void update_mode()
     if (cm != crdr_last_control_mode)
     {
         crdr_last_control_mode = cm;
-        gcs_send_text_fmt(PSTR("CONTROL MODE %i"), int(cm));
+        gcs_send_text_fmt(PSTR("CONTROL MODE: %i, ARMED: %i"), int(cm), int(crdr_armed));
     }
 }
 
@@ -131,9 +132,7 @@ static void update_leds()
 
 void userhook_FastLoop()
 {
-    gcs_send_message(MSG_RAW_IMU1);  // raw IMU data
-    gcs_send_message(MSG_ATTITUDE);  // computed attitude and angular rates
-    // host syncronization is based on the MSG_ATTITUDE message, so it must be sent in the last order
+    gcs_send_message(MSG_RAW_IMU1);  // raw IMU data, modified!
 }
 
 void userhook_50Hz()

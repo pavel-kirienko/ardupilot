@@ -12,6 +12,9 @@
 #include <AP_HAL_AVR.h>
 #include "AP_HAL_AVR_Namespace.h"
 
+#define SERIAL_BUFFER_SIZE_TX 300
+#define SERIAL_BUFFER_SIZE_RX 128
+
 /**
  * HAL_AVR_APM2 class derives from HAL but provides an AVR-specific
  * init method.

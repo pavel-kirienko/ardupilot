@@ -21,8 +21,7 @@
 
 #define CRDR_AUTOPILOT_INPUT_TIMEOUT 400
 
-// 250000 baud can be managed precisely, the closest standard value 230400 baud is 7.8% off
-#define SERIAL0_BAUD 115200
+#define SERIAL0_BAUD 230400
 // baudrate of serial3 used for serial0 when USB is disconnected; WTF?
 #define SERIAL3_BAUD SERIAL0_BAUD
 
