@@ -144,5 +144,5 @@ void userhook_50Hz()
 
 void userhook_MediumLoop()
 {
-    // TODO: send power state
+    gcs_send_message(MSG_EXTENDED_STATUS1);  // Power status, sensors states
 }
