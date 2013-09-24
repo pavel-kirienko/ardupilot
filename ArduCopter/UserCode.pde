@@ -38,8 +38,8 @@ void crdr_set_default_rc_override()
 {
     int16_t v[NUM_CHANNELS] =
     {
-        1500, // roll (or pitch?)
-        1500, // pitch (or roll?)
+        1500, // roll
+        1500, // pitch
         900,  // thrust (off)
         1500, // yaw
         0, 0, 0, 0   // no overriding
