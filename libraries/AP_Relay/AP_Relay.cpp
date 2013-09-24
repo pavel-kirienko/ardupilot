@@ -14,6 +14,8 @@
 #define RELAY_PIN 47
 #elif CONFIG_HAL_BOARD == HAL_BOARD_APM2 || CONFIG_HAL_BOARD == HAL_BOARD_AVR_SITL
 #define RELAY_PIN 13
+#elif CONFIG_HAL_BOARD == HAL_BOARD_PX4
+#define RELAY_PIN 111
 #else
 // no relay for this board
 #define RELAY_PIN -1
@@ -22,8 +24,9 @@
 const AP_Param::GroupInfo AP_Relay::var_info[] PROGMEM = {
     // @Param: PIN
     // @DisplayName: Relay Pin
-    // @Description: Digital pin number for relay control. This is normally 47 for the APM1 relay and 13 for the A9 pin on APM2.
+    // @Description: Digital pin number for relay control.
     // @User: Standard
+    // @Values: 13:APM2 A9 pin,47:APM1 relay,111:PX4 FMU Relay1,112:PX4 FMU Relay2,113:PX4IO Relay1,114:PX4IO Relay2,115:PX4IO ACC1,116:PX4IO ACC2
     AP_GROUPINFO("PIN",  0, AP_Relay, _pin, RELAY_PIN),
 
     AP_GROUPEND

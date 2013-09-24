@@ -373,7 +373,7 @@ test_modeswitch(uint8_t argc, const Menu::arg *argv)
 
     cliSerial->printf_P(PSTR("Control CH "));
 
-    cliSerial->println(FLIGHT_MODE_CHANNEL, DEC);
+    cliSerial->println(FLIGHT_MODE_CHANNEL, BASE_DEC);
 
     while(1) {
         delay(20);
@@ -443,17 +443,13 @@ test_gps(uint8_t argc, const Menu::arg *argv)
     while(1) {
         delay(100);
 
-        // Blink GPS LED if we don't have a fix
-        // ------------------------------------
-        update_GPS_light();
-
         g_gps->update();
 
         if (g_gps->new_data) {
             cliSerial->printf_P(PSTR("Lat: %ld, Lon %ld, Alt: %ldm, #sats: %d\n"),
                             (long)g_gps->latitude,
                             (long)g_gps->longitude,
-                            (long)g_gps->altitude/100,
+                            (long)g_gps->altitude_cm/100,
                             (int)g_gps->num_sats);
         }else{
             cliSerial->printf_P(PSTR("."));
@@ -473,8 +469,7 @@ test_ins(uint8_t argc, const Menu::arg *argv)
     ahrs.set_wind_estimation(true);
 
     ins.init(AP_InertialSensor::COLD_START, 
-             ins_sample_rate,
-             flash_leds);
+             ins_sample_rate);
     ahrs.reset();
 
     print_hit_enter();
@@ -540,8 +535,7 @@ test_mag(uint8_t argc, const Menu::arg *argv)
 
     // we need the AHRS initialised for this test
     ins.init(AP_InertialSensor::COLD_START, 
-             ins_sample_rate,
-             flash_leds);
+             ins_sample_rate);
     ahrs.reset();
 
     uint16_t counter = 0;
@@ -648,8 +642,9 @@ test_pressure(uint8_t argc, const Menu::arg *argv)
             cliSerial->println_P(PSTR("not healthy"));
         } else {
             cliSerial->printf_P(PSTR("Alt: %0.2fm, Raw: %f Temperature: %.1f\n"),
-                            current_loc.alt / 100.0,
-                            barometer.get_pressure(), 0.1*barometer.get_temperature());
+                                current_loc.alt / 100.0,
+                                barometer.get_pressure(), 
+                                barometer.get_temperature());
         }
 
         if(cliSerial->available() > 0) {
@@ -667,15 +662,11 @@ test_rawgps(uint8_t argc, const Menu::arg *argv)
     while(1) {
         // Blink Yellow LED if we are sending data to GPS
         if (hal.uartC->available()) {
-            digitalWrite(B_LED_PIN, LED_ON);
             hal.uartB->write(hal.uartC->read());
-            digitalWrite(B_LED_PIN, LED_OFF);
         }
         // Blink Red LED if we are receiving data from GPS
         if (hal.uartB->available()) {
-            digitalWrite(C_LED_PIN, LED_ON);
             hal.uartC->write(hal.uartB->read());
-            digitalWrite(C_LED_PIN, LED_OFF);
         }
         if(cliSerial->available() > 0) {
             return (0);

@@ -36,18 +36,37 @@ extern const AP_HAL::HAL& hal;
 void PX4UARTDriver::begin(uint32_t b, uint16_t rxS, uint16_t txS) 
 {
 	if (!_initialised) {
-		_fd = open(_devpath, O_RDWR);
+        uint8_t retries = 0;
+        while (retries < 5) {
+            _fd = open(_devpath, O_RDWR);
+            if (_fd != -1) {
+                break;
+            }
+            // sleep a bit and retry. There seems to be a NuttX bug
+            // that can cause ttyACM0 to not be available immediately,
+            // but a small delay can fix it
+            hal.scheduler->delay(100);
+            retries++;
+        }
 		if (_fd == -1) {
 			fprintf(stdout, "Failed to open UART device %s - %s\n",
 				_devpath, strerror(errno));
+			return;
+		}
+		if (retries != 0) {
+			fprintf(stdout, "WARNING: took %u retries to open UART %s\n", 
+                    (unsigned)retries, _devpath);
 			return;
 		}
 
         if (rxS == 0) {
             rxS = 128;
         }
-        if (txS == 0) {
-            txS = 128;
+        // on PX4 we have enough memory to have a larger transmit
+        // buffer for all ports. This means we don't get delays while
+        // waiting to write GPS config packets
+        if (txS < 512) {
+            txS = 512;
         }
 	}
 
@@ -109,79 +128,6 @@ void PX4UARTDriver::set_blocking_writes(bool blocking)
     _nonblocking_writes = !blocking;
 }
 bool PX4UARTDriver::tx_pending() { return false; }
-
-/* PX4 implementations of BetterStream virtual methods */
-void PX4UARTDriver::print_P(const prog_char_t *pstr) {
-	print(pstr);
-}
-
-void PX4UARTDriver::println_P(const prog_char_t *pstr) {
-	println(pstr);
-}
-
-void PX4UARTDriver::printf(const char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    _vprintf(fmt, ap);
-    va_end(ap);	
-}
-
-void PX4UARTDriver::_printf_P(const prog_char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    _vprintf(fmt, ap);
-    va_end(ap);	
-}
-
-void PX4UARTDriver::vprintf(const char *fmt, va_list ap) {
-    _vprintf(fmt, ap);
-}
-
-void PX4UARTDriver::vprintf_P(const prog_char *fmt, va_list ap) {
-    _vprintf(fmt, ap);
-}
-
-
-void PX4UARTDriver::_internal_vprintf(const char *fmt, va_list ap)
-{
-    if (hal.scheduler->in_timerprocess()) {
-        // not allowed from timers
-        return;
-    }
-    char *buf = NULL;
-    int n = avsprintf(&buf, fmt, ap);
-    if (n > 0) {
-        write((const uint8_t *)buf, n);
-    }
-    if (buf != NULL) {
-        free(buf);    
-    }
-}
-
-// handle %S -> %s
-void PX4UARTDriver::_vprintf(const char *fmt, va_list ap)
-{
-    if (hal.scheduler->in_timerprocess()) {
-        // not allowed from timers
-        return;
-    }
-    // we don't use vdprintf() as it goes directly to the file descriptor
-	if (strstr(fmt, "%S")) {
-		char *fmt2 = strdup(fmt);
-		if (fmt2 != NULL) {
-			for (uint16_t i=0; fmt2[i]; i++) {
-				if (fmt2[i] == '%' && fmt2[i+1] == 'S') {
-					fmt2[i+1] = 's';
-				}
-			}
-            _internal_vprintf(fmt2, ap);
-			free(fmt2);
-		}
-	} else {
-        _internal_vprintf(fmt, ap);
-	}	
-}
-
 
 /*
   buffer handling macros

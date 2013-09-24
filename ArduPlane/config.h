@@ -89,28 +89,12 @@
 // main board differences
 //
 #if CONFIG_HAL_BOARD == HAL_BOARD_APM1
- # define A_LED_PIN        37
- # define B_LED_PIN        36
- # define C_LED_PIN        35
- # define LED_ON           HIGH
- # define LED_OFF          LOW
- # define USB_MUX_PIN      -1
  # define BATTERY_VOLT_PIN      0      // Battery voltage on A0
  # define BATTERY_CURR_PIN      1      // Battery current on A1
  # define CONFIG_INS_TYPE CONFIG_INS_OILPAN
  # define CONFIG_BARO     AP_BARO_BMP085
  # define CONFIG_COMPASS  AP_COMPASS_HMC5843
 #elif CONFIG_HAL_BOARD == HAL_BOARD_APM2
- # define A_LED_PIN        27
- # define B_LED_PIN        26
- # define C_LED_PIN        25
- # define LED_ON           LOW
- # define LED_OFF          HIGH
- #if TELEMETRY_UART2 == ENABLED
-  # define USB_MUX_PIN -1
- #else
-  # define USB_MUX_PIN 23
- #endif
  # define BATTERY_VOLT_PIN      1      // Battery voltage on A1
  # define BATTERY_CURR_PIN      2      // Battery current on A2
  # define CONFIG_INS_TYPE CONFIG_INS_MPU6000
@@ -122,28 +106,30 @@
  # endif
  # define CONFIG_COMPASS  AP_COMPASS_HMC5843
 #elif CONFIG_HAL_BOARD == HAL_BOARD_AVR_SITL
- # define A_LED_PIN        27
- # define B_LED_PIN        26
- # define C_LED_PIN        25
- # define LED_ON           LOW
- # define LED_OFF          HIGH
  # define BATTERY_VOLT_PIN      1      // Battery voltage on A1
  # define BATTERY_CURR_PIN      2      // Battery current on A2
  # define CONFIG_INS_TYPE CONFIG_INS_STUB
  # define CONFIG_BARO     AP_BARO_HIL
  # define CONFIG_COMPASS  AP_COMPASS_HIL
 #elif CONFIG_HAL_BOARD == HAL_BOARD_PX4
- # define A_LED_PIN        27
- # define B_LED_PIN        26
- # define C_LED_PIN        25
- # define LED_ON           LOW
- # define LED_OFF          HIGH
- # define USB_MUX_PIN -1
  # define BATTERY_VOLT_PIN      -1
  # define BATTERY_CURR_PIN      -1
  # define CONFIG_INS_TYPE CONFIG_INS_PX4
  # define CONFIG_BARO AP_BARO_PX4
  # define CONFIG_COMPASS  AP_COMPASS_PX4
+ # define SERIAL0_BAUD 115200
+#elif CONFIG_HAL_BOARD == HAL_BOARD_FLYMAPLE
+// Flymaple board pin 20 is connected to the external battery supply
+// via a 24k/5.1k voltage divider. The schematic claims the divider is 25k/5k, 
+// but the actual installed resistors are not so.
+// So the divider ratio is 5.70588 = (24000+5100)/5100
+ # define BATTERY_VOLT_PIN      20
+ # define BATTERY_MONITORING  3
+ # define VOLT_DIV_RATIO   5.70588
+ # define BATTERY_CURR_PIN      19
+ # define CONFIG_INS_TYPE CONFIG_INS_FLYMAPLE
+ # define CONFIG_BARO AP_BARO_BMP085
+ # define CONFIG_COMPASS  AP_COMPASS_HMC5843
  # define SERIAL0_BAUD 115200
 #endif
 
@@ -202,6 +188,10 @@
 //////////////////////////////////////////////////////////////////////////////
 // Battery monitoring
 //
+#ifndef BATTERY_MONITORING
+ #define BATTERY_MONITORING 0
+#endif
+
 #ifndef VOLT_DIV_RATIO
  # define VOLT_DIV_RATIO                 3.56   // This is the proper value for an on-board APM1 voltage divider with a 3.9kOhm resistor
 //# define VOLT_DIV_RATIO		15.70	// This is the proper value for the AttoPilot 50V/90A sensor
@@ -284,10 +274,10 @@
  # define FLIGHT_MODE_2                  RTL
 #endif
 #if !defined(FLIGHT_MODE_3)
- # define FLIGHT_MODE_3                  STABILIZE
+ # define FLIGHT_MODE_3                  FLY_BY_WIRE_A
 #endif
 #if !defined(FLIGHT_MODE_4)
- # define FLIGHT_MODE_4                  STABILIZE
+ # define FLIGHT_MODE_4                  FLY_BY_WIRE_A
 #endif
 #if !defined(FLIGHT_MODE_5)
  # define FLIGHT_MODE_5                  MANUAL
@@ -349,13 +339,6 @@
 //
 #ifndef GROUND_START_DELAY
  # define GROUND_START_DELAY             0
-#endif
-
-//////////////////////////////////////////////////////////////////////////////
-// ENABLE_AIR_START
-//
-#ifndef ENABLE_AIR_START
- # define ENABLE_AIR_START               DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -435,7 +418,7 @@
 // FLY_BY_WIRE_B airspeed control
 //
 #ifndef AIRSPEED_FBW_MIN
- # define AIRSPEED_FBW_MIN               6
+ # define AIRSPEED_FBW_MIN               9
 #endif
 #ifndef AIRSPEED_FBW_MAX
  # define AIRSPEED_FBW_MAX               22
@@ -510,9 +493,6 @@
  # define SERVO_ROLL_INT_MAX   5
 #endif
 #define SERVO_ROLL_INT_MAX_CENTIDEGREE SERVO_ROLL_INT_MAX*100
-#ifndef ROLL_SLEW_LIMIT
- # define ROLL_SLEW_LIMIT      0
-#endif
 #ifndef SERVO_PITCH_P
  # define SERVO_PITCH_P        0.6
 #endif
@@ -605,9 +585,6 @@
 #ifndef THROTTLE_TE_INT_MAX
  # define THROTTLE_TE_INT_MAX  20
 #endif
-#ifndef THROTTLE_SLEW_LIMIT
- # define THROTTLE_SLEW_LIMIT  0
-#endif
 #ifndef PITCH_TARGET
  # define PITCH_TARGET         0
 #endif
@@ -643,10 +620,13 @@
     MASK_LOG_GPS | \
     MASK_LOG_PM | \
     MASK_LOG_NTUN | \
+    MASK_LOG_CTUN | \
     MASK_LOG_MODE | \
     MASK_LOG_CMD | \
     MASK_LOG_COMPASS | \
-    MASK_LOG_CURRENT
+    MASK_LOG_CURRENT | \
+    MASK_LOG_TECS | \
+    MASK_LOG_CAMERA
 
 
 
@@ -717,6 +697,10 @@
 #endif
 
 #ifndef SERIAL_BUFSIZE
- # define SERIAL_BUFSIZE 256
+ # define SERIAL_BUFSIZE 512
+#endif
+
+#ifndef SERIAL2_BUFSIZE
+ # define SERIAL2_BUFSIZE 256
 #endif
 

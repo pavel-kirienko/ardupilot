@@ -11,6 +11,10 @@ bool crdr_manual = false;
 
 static long unsigned int crdr_last_autopilot_input = 0;
 
+#define A_LED_PIN   27
+#define B_LED_PIN   26
+#define C_LED_PIN   25
+
 enum ControlMode
 {
     CONTROL_MODE_NONE,

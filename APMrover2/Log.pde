@@ -50,6 +50,7 @@ print_log_menu(void)
 		PLOG(CURRENT);
 		PLOG(SONAR);
 		PLOG(COMPASS);
+		PLOG(CAMERA);
 		#undef PLOG
 	}
 
@@ -141,6 +142,7 @@ select_logs(uint8_t argc, const Menu::arg *argv)
 		TARG(CURRENT);
 		TARG(SONAR);
 		TARG(COMPASS);
+		TARG(CAMERA);
 		#undef TARG
 	}
 
@@ -223,6 +225,33 @@ static void Log_Write_Cmd(uint8_t num, const struct Location *wp)
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
 }
 
+struct PACKED log_Camera {
+    LOG_PACKET_HEADER;
+    uint32_t gps_time;
+    int32_t  latitude;
+    int32_t  longitude;
+    int16_t  roll;
+    int16_t  pitch;
+    uint16_t yaw;
+};
+
+// Write a Camera packet. Total length : 26 bytes
+static void Log_Write_Camera()
+{
+#if CAMERA == ENABLED
+    struct log_Camera pkt = {
+        LOG_PACKET_HEADER_INIT(LOG_CAMERA_MSG),
+        gps_time    : g_gps->time,
+        latitude    : current_loc.lat,
+        longitude   : current_loc.lng,
+        roll        : (int16_t)ahrs.roll_sensor,
+        pitch       : (int16_t)ahrs.pitch_sensor,
+        yaw         : (uint16_t)ahrs.yaw_sensor
+    };
+    DataFlash.WriteBlock(&pkt, sizeof(pkt));
+#endif
+}
+
 struct PACKED log_Startup {
     LOG_PACKET_HEADER;
     uint8_t startup_type;
@@ -276,7 +305,6 @@ struct PACKED log_Nav_Tuning {
     float    wp_distance;
     uint16_t target_bearing_cd;
     uint16_t nav_bearing_cd;
-    int16_t  nav_gain_scalar;
     int8_t   throttle;
 };
 
@@ -287,9 +315,8 @@ static void Log_Write_Nav_Tuning()
         LOG_PACKET_HEADER_INIT(LOG_NTUN_MSG),
         yaw                 : (uint16_t)ahrs.yaw_sensor,
         wp_distance         : wp_distance,
-        target_bearing_cd   : (uint16_t)target_bearing,
-        nav_bearing_cd      : (uint16_t)nav_bearing,
-        nav_gain_scalar     : (int16_t)(nav_gain_scaler*1000),
+        target_bearing_cd   : (uint16_t)nav_controller->target_bearing_cd(),
+        nav_bearing_cd      : (uint16_t)nav_controller->nav_bearing_cd(),
         throttle            : (int8_t)(100 * channel_throttle->norm_output())
     };
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
@@ -335,7 +362,7 @@ static void Log_Write_Mode()
 
 struct PACKED log_Sonar {
     LOG_PACKET_HEADER;
-    int16_t nav_steer;
+    float    lateral_accel;
     uint16_t sonar1_distance;
     uint16_t sonar2_distance;
     uint16_t detected_count;
@@ -354,7 +381,7 @@ static void Log_Write_Sonar()
     }
     struct log_Sonar pkt = {
         LOG_PACKET_HEADER_INIT(LOG_SONAR_MSG),
-        nav_steer       : (int16_t)nav_steer_cd,
+        lateral_accel   : lateral_acceleration,
         sonar1_distance : (uint16_t)sonar.distance_cm(),
         sonar2_distance : (uint16_t)sonar2.distance_cm(),
         detected_count  : obstacle.detected_count,
@@ -430,14 +457,16 @@ static const struct LogStructure log_structure[] PROGMEM = {
       "PM",  "IHhBBBhhhhB", "LTime,MLC,gDt,RNCnt,RNBl,GPScnt,GDx,GDy,GDz,PMT,I2CErr" },
     { LOG_CMD_MSG, sizeof(log_Cmd),                 
       "CMD", "BBBBBeLL",   "CTot,CNum,CId,COpt,Prm1,Alt,Lat,Lng" },
+    { LOG_CAMERA_MSG, sizeof(log_Camera),                 
+      "CAM", "ILLccC",   "GPSTime,Lat,Lng,Roll,Pitch,Yaw" },
     { LOG_STARTUP_MSG, sizeof(log_Startup),         
       "STRT", "BB",         "SType,CTot" },
     { LOG_CTUN_MSG, sizeof(log_Control_Tuning),     
       "CTUN", "hcchf",      "Steer,Roll,Pitch,ThrOut,AccY" },
     { LOG_NTUN_MSG, sizeof(log_Nav_Tuning),         
-      "NTUN", "HfHHhb",     "Yaw,WpDist,TargBrg,NavBrg,NavGain,Thr" },
+      "NTUN", "HfHHb",     "Yaw,WpDist,TargBrg,NavBrg,Thr" },
     { LOG_SONAR_MSG, sizeof(log_Sonar),             
-      "SONR", "hHHHbHCb",   "NavStr,S1Dist,S2Dist,DCnt,TAng,TTim,Spd,Thr" },
+      "SONR", "fHHHbHCb",   "LatAcc,S1Dist,S2Dist,DCnt,TAng,TTim,Spd,Thr" },
     { LOG_CURRENT_MSG, sizeof(log_Current),             
       "CURR", "hhhHf",      "Thr,Volt,Curr,Vcc,CurrTot" },
     { LOG_MODE_MSG, sizeof(log_Mode),             

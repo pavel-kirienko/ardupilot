@@ -232,7 +232,8 @@ static bool verify_condition_command()          // Returns true if command compl
 static void do_RTL(void)
 {
     control_mode    = RTL;
-    next_WP                 = home;
+    prev_WP = current_loc;
+    next_WP = home;
 
     if (g.loiter_radius < 0) {
         loiter.direction = -1;
@@ -245,6 +246,8 @@ static void do_RTL(void)
     // -------------------------
     next_WP.alt = read_alt_to_hold();
 
+    setup_glide_slope();
+
     if (g.log_bitmask & MASK_LOG_MODE)
         Log_Write_Mode(control_mode);
 }
@@ -254,7 +257,7 @@ static void do_takeoff()
     set_next_WP(&next_nav_command);
     // pitch in deg, airspeed  m/s, throttle %, track WP 1 or 0
     takeoff_pitch_cd                = (int)next_nav_command.p1 * 100;
-    takeoff_altitude        = next_nav_command.alt;
+    takeoff_altitude_cm     = next_nav_command.alt;
     next_WP.lat             = home.lat + 1000;          // so we don't have bad calcs
     next_WP.lng             = home.lng + 1000;          // so we don't have bad calcs
     takeoff_complete        = false;                            // set flag to use gps ground course during TO.  IMU will be doing yaw drift correction
@@ -322,7 +325,8 @@ static bool verify_takeoff()
         nav_controller->update_level_flight();        
     }
 
-    if (adjusted_altitude_cm() > takeoff_altitude)  {
+    // see if we have reached takeoff altitude
+    if (adjusted_altitude_cm() > takeoff_altitude_cm) {
         hold_course_cd = -1;
         takeoff_complete = true;
         next_WP = prev_WP = current_loc;
@@ -341,7 +345,7 @@ static bool verify_land()
 
     // Set land_complete if we are within 2 seconds distance or within
     // 3 meters altitude of the landing point
-    if ((wp_distance <= (g.land_flare_sec*g_gps->ground_speed*0.01))
+    if ((wp_distance <= (g.land_flare_sec*g_gps->ground_speed_cm*0.01f))
         || (adjusted_altitude_cm() <= next_WP.alt + g.land_flare_alt*100)) {
 
         land_complete = true;
@@ -360,14 +364,14 @@ static bool verify_land()
             gcs_send_text_fmt(PSTR("Land Complete - Hold course %ld"), hold_course_cd);
         }
 
-        if (g_gps->ground_speed*0.01 < 3.0) {
+        if (g_gps->ground_speed_cm*0.01f < 3.0) {
             // reload any airspeed or groundspeed parameters that may have
             // been set for landing. We don't do this till ground
             // speed drops below 3.0 m/s as otherwise we will change
             // target speeds too early.
             g.airspeed_cruise_cm.load();
             g.min_gndspeed_cm.load();
-            g.throttle_cruise.load();
+            aparm.throttle_cruise.load();
         }
     }
 
@@ -385,11 +389,20 @@ static bool verify_nav_wp()
     hold_course_cd = -1;
 
     nav_controller->update_waypoint(prev_WP, next_WP);
+
+    // see if the user has specified a maximum distance to waypoint
+    if (g.waypoint_max_radius > 0 && wp_distance > (uint16_t)g.waypoint_max_radius) {
+        if (location_passed_point(current_loc, prev_WP, next_WP)) {
+            // this is needed to ensure completion of the waypoint
+            prev_WP = current_loc;
+        }
+        return false;
+    }
     
     if (wp_distance <= nav_controller->turn_distance(g.waypoint_radius)) {
         gcs_send_text_fmt(PSTR("Reached Waypoint #%i dist %um"),
                           (unsigned)nav_command_index,
-                          (unsigned)get_distance(&current_loc, &next_WP));
+                          (unsigned)get_distance(current_loc, next_WP));
         return true;
 	}
 
@@ -397,7 +410,7 @@ static bool verify_nav_wp()
     if (location_passed_point(current_loc, prev_WP, next_WP)) {
         gcs_send_text_fmt(PSTR("Passed Waypoint #%i dist %um"),
                           (unsigned)nav_command_index,
-                          (unsigned)get_distance(&current_loc, &next_WP));
+                          (unsigned)get_distance(current_loc, next_WP));
         return true;
     }
 
@@ -588,7 +601,7 @@ static void do_change_speed()
 
     if (next_nonnav_command.lat > 0) {
         gcs_send_text_fmt(PSTR("Set throttle %u"), (unsigned)next_nonnav_command.lat);
-        g.throttle_cruise.set(next_nonnav_command.lat);
+        aparm.throttle_cruise.set(next_nonnav_command.lat);
     }
 }
 
@@ -612,15 +625,16 @@ static void do_set_servo()
 
 static void do_set_relay()
 {
-#if CONFIG_RELAY == ENABLED
     if (next_nonnav_command.p1 == 1) {
+        gcs_send_text_fmt(PSTR("Relay on"));
         relay.on();
     } else if (next_nonnav_command.p1 == 0) {
+        gcs_send_text_fmt(PSTR("Relay off"));
         relay.off();
     }else{
+        gcs_send_text_fmt(PSTR("Relay toggle"));
         relay.toggle();
     }
-#endif
 }
 
 static void do_repeat_servo(uint8_t channel, uint16_t servo_value,
@@ -657,6 +671,8 @@ static void do_take_picture()
 {
 #if CAMERA == ENABLED
     camera.trigger_pic();
-    Log_Write_Camera();
+    if (g.log_bitmask & MASK_LOG_CAMERA) {
+        Log_Write_Camera();
+    }
 #endif
 }

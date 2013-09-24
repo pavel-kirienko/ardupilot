@@ -1,12 +1,22 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
+/*
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 /*
  *  ArduCopter parameter definitions
  *
- *  This firmware is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation; either
- *  version 2.1 of the License, or (at your option) any later version.
  */
 
 #define GSCALAR(v, name, def) { g.v.vtype, name, Parameters::k_param_ ## v, &g.v, {def_value : def} }
@@ -113,15 +123,22 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @User: Standard
     GSCALAR(failsafe_gcs, "FS_GCS_ENABLE", FS_GCS_DISABLED),
 
+    // @Param: GPS_HDOP_GOOD
+    // @DisplayName: GPS Hdop Good
+    // @Description: GPS Hdop value below which represent a good position.  Used for pre-arm checks
+    // @Range: 100 900
+    // @User: Advanced
+    GSCALAR(gps_hdop_good, "GPS_HDOP_GOOD", GPS_HDOP_GOOD_DEFAULT),
+
     // @Param: VOLT_DIVIDER
     // @DisplayName: Voltage Divider
-    // @Description: Used to convert the voltage of the voltage sensing pin (BATT_VOLT_PIN) to the actual battery's voltage (pin_voltage * VOLT_DIVIDER). For the 3DR Power brick, this should be set to 10.1. For the PX4 using the PX4IO power supply this should be set to 1.
+    // @Description: Used to convert the voltage of the voltage sensing pin (BATT_VOLT_PIN) to the actual battery's voltage (pin_voltage * VOLT_DIVIDER). For the 3DR Power brick on APM2 or Pixhawk this should be set to 10.1. For the PX4 using the PX4IO power supply this should be set to 1.
     // @User: Advanced
     GSCALAR(volt_div_ratio, "VOLT_DIVIDER",     VOLT_DIV_RATIO),
 
     // @Param: AMP_PER_VOLT
     // @DisplayName: Current Amps per volt
-    // @Description: Used to convert the voltage on the current sensing pin (BATT_CURR_PIN) to the actual current being consumed in amps (curr pin voltage * INPUT_VOLTS/1024 * AMP_PER_VOLT )
+    // @Description: Used to convert the voltage on the current sensing pin (BATT_CURR_PIN) to the actual current being consumed in amps. For the 3DR Power brick on APM2 or Pixhawk it should be set to 17.
     // @User: Advanced
     GSCALAR(curr_amp_per_volt,      "AMP_PER_VOLT", CURR_AMP_PER_VOLT),
 
@@ -130,7 +147,7 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Description: Battery capacity in milliamp-hours (mAh)
     // @Units: mAh
 	// @User: Standard
-    GSCALAR(pack_capacity,  "BATT_CAPACITY",    HIGH_DISCHARGE),
+    GSCALAR(pack_capacity,  "BATT_CAPACITY",    BATTERY_CAPACITY_DEFAULT),
 
     // @Param: MAG_ENABLE
     // @DisplayName: Enable Compass
@@ -172,15 +189,15 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Param: BATT_VOLT_PIN
     // @DisplayName: Battery Voltage sensing pin
-    // @Description: Setting this to 0 ~ 13 will enable battery current sensing on pins A0 ~ A13. For the 3DR power brick on APM2.5 it should be set to 13. On the PX4 it should be set to 100.
-    // @Values: -1:Disabled, 0:A0, 1:A1, 13:A13, 100:PX4
+    // @Description: Setting this to 0 ~ 13 will enable battery current sensing on pins A0 ~ A13. For the 3DR power brick on APM2.5 it should be set to 13. On the PX4 it should be set to 100. On the Pixhawk powered from the PM connector it should be set to 2.
+    // @Values: -1:Disabled, 0:A0, 1:A1, 2:Pixhawk, 13:A13, 100:PX4
     // @User: Standard
     GSCALAR(battery_volt_pin,    "BATT_VOLT_PIN",    BATTERY_VOLT_PIN),
 
     // @Param: BATT_CURR_PIN
     // @DisplayName: Battery Current sensing pin
-    // @Description: Setting this to 0 ~ 13 will enable battery current sensing on pins A0 ~ A13. For the 3DR power brick on APM2.5 it should be set to 12. On the PX4 it should be set to 101. 
-    // @Values: -1:Disabled, 1:A1, 2:A2, 12:A12, 101:PX4
+    // @Description: Setting this to 0 ~ 13 will enable battery current sensing on pins A0 ~ A13. For the 3DR power brick on APM2.5 it should be set to 12. On the PX4 it should be set to 101. On the Pixhawk powered from the PM connector it should be set to 3.
+    // @Values: -1:Disabled, 1:A1, 2:A2, 3:Pixhawk, 12:A12, 101:PX4
     // @User: Standard
     GSCALAR(battery_curr_pin,    "BATT_CURR_PIN",    BATTERY_CURR_PIN),
 
@@ -191,17 +208,10 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @User: Standard
     GSCALAR(rssi_pin,            "RSSI_PIN",         -1),
 
-    // @Param: THR_ACC_ENABLE
-    // @DisplayName: Enable Accel based throttle controller
-    // @Description: This allows enabling and disabling the accelerometer based throttle controller.  If disabled a velocity based controller is used.
-    // @Values: 0:Disabled, 1:Enabled
-    // @User: Standard
-    GSCALAR(throttle_accel_enabled,  "THR_ACC_ENABLE",   1),
-
     // @Param: WP_YAW_BEHAVIOR
     // @DisplayName: Yaw behaviour during missions
     // @Description: Determines how the autopilot controls the yaw during missions and RTL
-    // @Values: 0:Never change yaw, 1:Face next waypoint, 2:Face next waypoint except RTL
+    // @Values: 0:Never change yaw, 1:Face next waypoint, 2:Face next waypoint except RTL, 3:Face along GPS course
     // @User: Advanced
     GSCALAR(wp_yaw_behavior,  "WP_YAW_BEHAVIOR",    WP_YAW_BEHAVIOR_DEFAULT),
 
@@ -266,7 +276,7 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @DisplayName: Minimum Throttle
     // @Description: The minimum throttle that will be sent to the motors to keep them spinning
     // @Units: ms
-    // @Range: 0 1000
+    // @Range: 0 300
     // @Increment: 1
     // @User: Standard
     GSCALAR(throttle_min,   "THR_MIN",          MINIMUM_THROTTLE),
@@ -315,42 +325,42 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Param: FLTMODE1
     // @DisplayName: Flight Mode 1
     // @Description: Flight mode when Channel 5 pwm is <= 1230
-    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:ToyA,12:ToyM
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:ToyA,12:ToyM,13:Sport
     // @User: Standard
     GSCALAR(flight_mode1, "FLTMODE1",               FLIGHT_MODE_1),
 
     // @Param: FLTMODE2
     // @DisplayName: Flight Mode 2
     // @Description: Flight mode when Channel 5 pwm is >1230, <= 1360
-    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:ToyA,12:ToyM
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:ToyA,12:ToyM,13:Sport
     // @User: Standard
     GSCALAR(flight_mode2, "FLTMODE2",               FLIGHT_MODE_2),
 
     // @Param: FLTMODE3
     // @DisplayName: Flight Mode 3
     // @Description: Flight mode when Channel 5 pwm is >1360, <= 1490
-    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:ToyA,12:ToyM
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:ToyA,12:ToyM,13:Sport
     // @User: Standard
     GSCALAR(flight_mode3, "FLTMODE3",               FLIGHT_MODE_3),
 
     // @Param: FLTMODE4
     // @DisplayName: Flight Mode 4
     // @Description: Flight mode when Channel 5 pwm is >1490, <= 1620
-    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:ToyA,12:ToyM
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:ToyA,12:ToyM,13:Sport
     // @User: Standard
     GSCALAR(flight_mode4, "FLTMODE4",               FLIGHT_MODE_4),
 
     // @Param: FLTMODE5
     // @DisplayName: Flight Mode 5
     // @Description: Flight mode when Channel 5 pwm is >1620, <= 1749
-    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:ToyA,12:ToyM
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:ToyA,12:ToyM,13:Sport
     // @User: Standard
     GSCALAR(flight_mode5, "FLTMODE5",               FLIGHT_MODE_5),
 
     // @Param: FLTMODE6
     // @DisplayName: Flight Mode 6
     // @Description: Flight mode when Channel 5 pwm is >=1750
-    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:ToyA,12:ToyM
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:ToyA,12:ToyM,13:Sport
     // @User: Standard
     GSCALAR(flight_mode6, "FLTMODE6",               FLIGHT_MODE_6),
 
@@ -385,7 +395,7 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @DisplayName: Channel 6 Tuning
     // @Description: Controls which parameters (normally PID gains) are being tuned with transmitter's channel 6 knob
     // @User: Standard
-    // @Values: 0:CH6_NONE,1:CH6_STABILIZE_KP,2:CH6_STABILIZE_KI,3:CH6_YAW_KP,4:CH6_RATE_KP,5:CH6_RATE_KI,6:CH6_YAW_RATE_KP,7:CH6_THROTTLE_KP,9:CH6_RELAY,10:CH6_WP_SPEED,12:CH6_LOITER_KP,13:CH6_HELI_EXTERNAL_GYRO,14:CH6_THR_HOLD_KP,17:CH6_OPTFLOW_KP,18:CH6_OPTFLOW_KI,19:CH6_OPTFLOW_KD,21:CH6_RATE_KD,22:CH6_LOITER_RATE_KP,23:CH6_LOITER_RATE_KD,24:CH6_YAW_KI,25:CH6_ACRO_KP,26:CH6_YAW_RATE_KD,27:CH6_LOITER_KI,28:CH6_LOITER_RATE_KI,29:CH6_STABILIZE_KD,30:CH6_AHRS_YAW_KP,31:CH6_AHRS_KP,32:CH6_INAV_TC,33:CH6_THROTTLE_KI,34:CH6_THR_ACCEL_KP,35:CH6_THR_ACCEL_KI,36:CH6_THR_ACCEL_KD,38:CH6_DECLINATION,39:CH6_CIRCLE_RATE
+    // @Values: 0:None,1:Stab Roll/Pitch kP,4:Rate Roll/Pitch kP,5:Rate Roll/Pitch kI,21:Rate Roll/Pitch kD,3:Stab Yaw kP,6:Rate Yaw kP,26:Rate Yaw kD,14:Altitude Hold kP,7:Throttle Rate kP,37:Throttle Rate kD,34:Throttle Accel kP,35:Throttle Accel kI,36:Throttle Accel kD,12:Loiter Pos kP,22:Loiter Rate kP,28:Loiter Rate kI,23:Loiter Rate kD,10:WP Speed,25:Acro RollPitch kP,40:Acro Yaw kP,9:Relay On/Off,13:Heli Ext Gyro,17:OF Loiter kP,18:OF Loiter kI,19:OF Loiter kD,30:AHRS Yaw kP,31:AHRS kP,32:INAV_TC,38:Declination,39:Circle Rate,41:Sonar Gain
     GSCALAR(radio_tuning, "TUNE",                   0),
 
     // @Param: TUNE_LOW
@@ -412,14 +422,14 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Param: CH7_OPT
     // @DisplayName: Channel 7 option
     // @Description: Select which function if performed when CH7 is above 1800 pwm
-    // @Values: 0:Do Nothing, 2:Flip, 3:Simple Mode, 4:RTL, 5:Save Trim, 7:Save WP, 8:Multi Mode, 9:Camera Trigger, 10:Sonar, 11:Fence, 12:ResetToArmedYaw
+    // @Values: 0:Do Nothing, 2:Flip, 3:Simple Mode, 4:RTL, 5:Save Trim, 7:Save WP, 8:Multi Mode, 9:Camera Trigger, 10:Sonar, 11:Fence, 12:ResetToArmedYaw, 13:Super Simple Mode, 14:Acro Trainer, 16:Auto
     // @User: Standard
     GSCALAR(ch7_option, "CH7_OPT",                  CH7_OPTION),
 
     // @Param: CH8_OPT
     // @DisplayName: Channel 8 option
     // @Description: Select which function if performed when CH8 is above 1800 pwm
-    // @Values: 0:Do Nothing, 2:Flip, 3:Simple Mode, 4:RTL, 5:Save Trim, 7:Save WP, 8:Multi Mode, 9:Camera Trigger, 10:Sonar, 11:Fence, 12:ResetToArmedYaw
+    // @Values: 0:Do Nothing, 2:Flip, 3:Simple Mode, 4:RTL, 5:Save Trim, 7:Save WP, 8:Multi Mode, 9:Camera Trigger, 10:Sonar, 11:Fence, 12:ResetToArmedYaw, 13:Super Simple Mode, 14:Acro Trainer, 16:Auto
     // @User: Standard
     GSCALAR(ch8_option, "CH8_OPT",                  CH8_OPTION),
 
@@ -429,6 +439,13 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Values: 0:Disabled, 1:Enabled
     // @User: Standard
     GSCALAR(arming_check_enabled, "ARMING_CHECK",   1),
+
+    // @Param: ANGLE_MAX
+    // @DisplayName: Angle Max
+    // @Description: Maximum lean angle in all flight modes
+    // @Range 1000 8000
+    // @User: Advanced
+    GSCALAR(angle_max, "ANGLE_MAX",                 DEFAULT_ANGLE_MAX),
 
 #if FRAME_CONFIG ==     HELI_FRAME
     // @Group: HS1_
@@ -521,47 +538,47 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @User: Advanced
     GSCALAR(rc_speed, "RC_SPEED",              RC_FAST_SPEED),
 
-    // @Param: ACRO_P
-    // @DisplayName: Acro P gain
-    // @Description: Used to convert pilot roll, pitch and yaw input into a dssired rate of rotation in ACRO mode.  Higher values mean faster rate of rotation.
+    // @Param: ACRO_RP_P
+    // @DisplayName: Acro Roll and Pitch P gain
+    // @Description: Converts pilot roll and pitch into a desired rate of rotation in ACRO and SPORT mode.  Higher values mean faster rate of rotation.
     // @Range: 1 10
     // @User: Standard
-    GSCALAR(acro_p,                 "ACRO_P",           ACRO_P),
+    GSCALAR(acro_rp_p,                 "ACRO_RP_P",           ACRO_RP_P),
 
-    // @Param: AXIS_ENABLE
-    // @DisplayName: Acro Axis
-    // @Description: Used to control whether acro mode actively maintains the current angle when control sticks are released (Enabled = maintains current angle)
-    // @Values: 0:Disabled, 1:Enabled
+    // @Param: ACRO_YAW_P
+    // @DisplayName: Acro Yaw P gain
+    // @Description: Converts pilot yaw input into a desired rate of rotation in ACRO, Stabilize and SPORT modes.  Higher values mean faster rate of rotation.
+    // @Range: 1 10
     // @User: Standard
-    GSCALAR(axis_enabled,           "AXIS_ENABLE",      AXIS_LOCK_ENABLED),
+    GSCALAR(acro_yaw_p,                 "ACRO_YAW_P",           ACRO_YAW_P),
 
     // @Param: ACRO_BAL_ROLL
     // @DisplayName: Acro Balance Roll
     // @Description: rate at which roll angle returns to level in acro mode
-    // @Range: 0 300
-    // @Increment: 1
+    // @Range: 0 3
+    // @Increment: 0.1
     // @User: Advanced
     GSCALAR(acro_balance_roll,      "ACRO_BAL_ROLL",    ACRO_BALANCE_ROLL),
 
     // @Param: ACRO_BAL_PITCH
     // @DisplayName: Acro Balance Pitch
     // @Description: rate at which pitch angle returns to level in acro mode
-    // @Range: 0 300
-    // @Increment: 1
+    // @Range: 0 3
+    // @Increment: 0.1
     // @User: Advanced
     GSCALAR(acro_balance_pitch,     "ACRO_BAL_PITCH",   ACRO_BALANCE_PITCH),
 
     // @Param: ACRO_TRAINER
-    // @DisplayName: Acro Trainer Enabled
-    // @Description: Set to 1 (Enabled) to make roll return to within 45 degrees of level automatically
-    // @Values: 0:Disabled,1:Enabled
+    // @DisplayName: Acro Trainer
+    // @Description: Type of trainer used in acro mode
+    // @Values: 0:Disabled,1:Leveling,2:Leveling and Limited
     // @User: Advanced
-    GSCALAR(acro_trainer_enabled,   "ACRO_TRAINER",     ACRO_TRAINER_ENABLED),
+    GSCALAR(acro_trainer,   "ACRO_TRAINER",     ACRO_TRAINER_LIMITED),
 
     // @Param: LED_MODE
     // @DisplayName: Copter LED Mode
     // @Description: bitmap to control the copter led mode
-    // @Values: 0:Disabled,1:Enable,2:GPS On,4:Aux,8:Buzzer,16:Oscillate,32:Nav Blink,64:GPS Nav Blink
+    // @Values: 0:Disabled,1:Enable,3:GPS On,4:Aux,9:Buzzer,17:Oscillate,33:Nav Blink,65:GPS Nav Blink
     // @User: Standard
     GSCALAR(copter_leds_mode,       "LED_MODE",         9),
 
@@ -741,7 +758,7 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Description: Throttle rate controller D gain.  Compensates for short-term change in desired vertical speed vs actual speed
     // @Range: 0.000 0.400
     // @User: Standard
-    GGROUP(pid_throttle,      "THR_RATE_", AC_PID),
+    GGROUP(pid_throttle_rate, "THR_RATE_", AC_PID),
 
     // @Param: THR_ACCEL_P
     // @DisplayName: Throttle acceleration controller P gain
@@ -970,16 +987,16 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Path: ../libraries/AP_InertialNav/AP_InertialNav.cpp
     GOBJECT(inertial_nav,           "INAV_",    AP_InertialNav),
 
-    //@Group: WPNAV_
-    //@Path: ../libraries/AC_WPNav/AC_WPNav.cpp
+    // @Group: WPNAV_
+    // @Path: ../libraries/AC_WPNav/AC_WPNav.cpp
     GOBJECT(wp_nav, "WPNAV_",       AC_WPNav),
 
     // @Group: SR0_
-    // @Path: ./GCS_Mavlink.pde
+    // @Path: GCS_Mavlink.pde
     GOBJECT(gcs0,                   "SR0_",     GCS_MAVLINK),
 
     // @Group: SR3_
-    // @Path: ./GCS_Mavlink.pde
+    // @Path: GCS_Mavlink.pde
     GOBJECT(gcs3,                   "SR3_",     GCS_MAVLINK),
 
     // @Group: AHRS_
@@ -998,6 +1015,12 @@ const AP_Param::Info var_info[] PROGMEM = {
     GOBJECT(camera_mount2,           "MNT2_",       AP_Mount),
 #endif
 
+#if SPRAYER == ENABLED
+    // @Group: SPRAYER_
+    // @Path: ../libraries/AC_Sprayer/AC_Sprayer.cpp
+    GOBJECT(sprayer,                "SPRAY_",       AC_Sprayer),
+#endif
+
 #if CONFIG_HAL_BOARD == HAL_BOARD_AVR_SITL
     GOBJECT(sitl, "SIM_", SITL),
 #endif
@@ -1011,8 +1034,8 @@ const AP_Param::Info var_info[] PROGMEM = {
     GOBJECT(scheduler, "SCHED_", AP_Scheduler),
 
 #if AC_FENCE == ENABLED
-    //@Group: FENCE_
-    //@Path: ../libraries/AC_Fence/AC_Fence.cpp
+    // @Group: FENCE_
+    // @Path: ../libraries/AC_Fence/AC_Fence.cpp
     GOBJECT(fence,      "FENCE_",   AC_Fence),
 #endif
 
@@ -1077,7 +1100,6 @@ static void load_parameters(void)
 
         // save the current format version
         g.format_version.set_and_save(Parameters::k_format_version);
-        default_dead_zones();
         cliSerial->println_P(PSTR("done."));
     } else {
         uint32_t before = micros();

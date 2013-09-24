@@ -11,15 +11,16 @@
 #include <AP_InertialNav.h>     // Inertial Navigation library
 
 // loiter maximum velocities and accelerations
-#define WPNAV_ACCELERATION              250.0f      // defines the default velocity vs distant curve.  maximum acceleration in cm/s/s that position controller asks for from acceleration controller
+#define WPNAV_ACCELERATION              100.0f      // defines the default velocity vs distant curve.  maximum acceleration in cm/s/s that position controller asks for from acceleration controller
 #define WPNAV_ACCELERATION_MIN           50.0f      // minimum acceleration in cm/s/s - used for sanity checking _wp_accel parameter
 #define WPNAV_ACCEL_MAX                 980.0f      // max acceleration in cm/s/s that the loiter velocity controller will ask from the lower accel controller.
                                                     // should be 1.5 times larger than WPNAV_ACCELERATION.
                                                     // max acceleration = max lean angle * 980 * pi / 180.  i.e. 23deg * 980 * 3.141 / 180 = 393 cm/s/s
 
-#define WPNAV_LOITER_SPEED              750.0f      // maximum default loiter speed in cm/s
-#define WPNAV_LOITER_ACCEL_MAX          375.0f      // maximum acceleration in loiter mode
+#define WPNAV_LOITER_SPEED              500.0f      // maximum default loiter speed in cm/s
+#define WPNAV_LOITER_ACCEL_MAX          250.0f      // maximum acceleration in loiter mode
 #define WPNAV_LOITER_ACCEL_MIN           25.0f      // minimum acceleration in loiter mode
+#define WPNAV_LOITER_SPEED_MAX_TO_CORRECT_ERROR 200.0f      // maximum speed used to correct position error (i.e. not including feed forward)
 
 #define MAX_LEAN_ANGLE                  4500        // default maximum lean angle
 
@@ -29,7 +30,7 @@
 #define WPNAV_WP_SPEED_UP               250.0f      // default maximum climb velocity
 #define WPNAV_WP_SPEED_DOWN             150.0f      // default maximum descent velocity
 
-#define WPNAV_ALT_HOLD_P                2.0f        // default throttle controller's altitude hold's P gain.
+#define WPNAV_ALT_HOLD_P                1.0f        // default throttle controller's altitude hold's P gain.
 #define WPNAV_ALT_HOLD_ACCEL_MAX        250.0f      // hard coded copy of throttle controller's maximum acceleration in cm/s.  To-Do: remove duplication with throttle controller definition
 
 #define WPNAV_MIN_LEASH_LENGTH          100.0f      // minimum leash lengths in cm
@@ -65,15 +66,6 @@ public:
 
     /// update_loiter - run the loiter controller - should be called at 10hz
     void update_loiter();
-
-    /// set_angle_limit - limits maximum angle in centi-degrees the copter will lean
-    void set_angle_limit(int32_t lean_angle) { _lean_angle_max = lean_angle; }
-
-    /// clear_angle_limit - reset angle limits back to defaults
-    void clear_angle_limit() { _lean_angle_max = MAX_LEAN_ANGLE; }
-
-    /// get_angle_limit - retrieve maximum angle in centi-degrees the copter will lean
-    int32_t get_angle_limit() const { return _lean_angle_max; }
 
     /// get_stopping_point - returns vector to stopping point based on a horizontal position and velocity
     void get_stopping_point(const Vector3f& position, const Vector3f& velocity, Vector3f &target) const;
@@ -148,6 +140,12 @@ public:
     /// get_waypoint_radius - access for waypoint radius in cm
     float get_waypoint_radius() const { return _wp_radius_cm; }
 
+    /// get_waypoint_acceleration - returns acceleration in cm/s/s during missions
+    float get_waypoint_acceleration() const { return _wp_accel_cms.get(); }
+
+    /// set_lean_angle_max - limits maximum lean angle
+    void set_lean_angle_max(int16_t angle_cd) { if (angle_cd >= 1000 && angle_cd <= 8000) {_lean_angle_max_cd = angle_cd;} }
+
     static const struct AP_Param::GroupInfo var_info[];
 
 protected:
@@ -202,8 +200,12 @@ protected:
     AP_Float    _wp_speed_down_cms;     // descent speed target in cm/s
     AP_Float    _wp_radius_cm;          // distance from a waypoint in cm that, when crossed, indicates the wp has been reached
     AP_Float    _wp_accel_cms;          // acceleration in cm/s/s during missions
+    uint8_t     _loiter_step;           // used to decide which portion of loiter controller to run during this iteration
+    uint8_t     _wpnav_step;            // used to decide which portion of wpnav controller to run during this iteration
     uint32_t	_loiter_last_update;    // time of last update_loiter call
     uint32_t	_wpnav_last_update;     // time of last update_wpnav call
+    float       _loiter_dt;             // time difference since last loiter call
+    float       _wpnav_dt;              // time difference since last loiter call
     float       _cos_yaw;               // short-cut to save on calcs required to convert roll-pitch frame to lat-lon frame
     float       _sin_yaw;
     float       _cos_pitch;
@@ -219,9 +221,9 @@ protected:
     int16_t     _pilot_vel_right_cms;   // pilot's desired velocity right (body-frame)
     Vector3f    _target_vel;            // pilot's latest desired velocity in earth-frame
     Vector3f    _vel_last;              // previous iterations velocity in cm/s
-    int32_t     _lean_angle_max;        // maximum lean angle.  can be set from main code so that throttle controller can stop leans that cause copter to lose altitude
     float       _loiter_leash;          // loiter's horizontal leash length in cm.  used to stop the pilot from pushing the target location too far from the current location
     float       _loiter_accel_cms;      // loiter's acceleration in cm/s/s
+    int16_t     _lean_angle_max_cd;     // maximum lean angle in centi-degrees
 
     // waypoint controller internal variables
     Vector3f    _origin;                // starting point of trip to next waypoint in cm from home (equivalent to next_WP)

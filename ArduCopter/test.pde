@@ -9,7 +9,6 @@ static int8_t   test_baro(uint8_t argc,                 const Menu::arg *argv);
 #endif
 static int8_t   test_battery(uint8_t argc,              const Menu::arg *argv);
 static int8_t   test_compass(uint8_t argc,              const Menu::arg *argv);
-static int8_t   test_eedump(uint8_t argc,               const Menu::arg *argv);
 static int8_t   test_gps(uint8_t argc,                  const Menu::arg *argv);
 static int8_t   test_ins(uint8_t argc,                  const Menu::arg *argv);
 static int8_t   test_logging(uint8_t argc,              const Menu::arg *argv);
@@ -52,7 +51,6 @@ const struct Menu::command test_menu_commands[] PROGMEM = {
 #endif
     {"battery",             test_battery},
     {"compass",             test_compass},
-    {"eedump",              test_eedump},
     {"gps",                 test_gps},
     {"ins",                 test_ins},
     {"logging",             test_logging},
@@ -97,8 +95,9 @@ test_baro(uint8_t argc, const Menu::arg *argv)
             cliSerial->println_P(PSTR("not healthy"));
         } else {
             cliSerial->printf_P(PSTR("Alt: %0.2fm, Raw: %f Temperature: %.1f\n"),
-                            alt / 100.0,
-                            barometer.get_pressure(), 0.1*barometer.get_temperature());
+                                alt / 100.0,
+                                barometer.get_pressure(), 
+                                barometer.get_temperature());
         }
         if(cliSerial->available() > 0) {
             return (0);
@@ -179,8 +178,7 @@ test_compass(uint8_t argc, const Menu::arg *argv)
 
     // we need the AHRS initialised for this test
     ins.init(AP_InertialSensor::COLD_START, 
-             ins_sample_rate,
-             flash_leds);
+             ins_sample_rate);
     ahrs.reset();
     int16_t counter = 0;
     float heading = 0;
@@ -240,22 +238,6 @@ test_compass(uint8_t argc, const Menu::arg *argv)
 }
 
 static int8_t
-test_eedump(uint8_t argc, const Menu::arg *argv)
-{
-
-    // hexdump the EEPROM
-    for (uint16_t i = 0; i < EEPROM_MAX_ADDR; i += 16) {
-        cliSerial->printf_P(PSTR("%04x:"), i);
-        for (uint16_t j = 0; j < 16; j++)  {
-            int b = hal.storage->read_byte(i+j);
-            cliSerial->printf_P(PSTR(" %02x"), b);
-        }
-        cliSerial->println();
-    }
-    return(0);
-}
-
-static int8_t
 test_gps(uint8_t argc, const Menu::arg *argv)
 {
     print_hit_enter();
@@ -263,10 +245,6 @@ test_gps(uint8_t argc, const Menu::arg *argv)
 
     while(1) {
         delay(100);
-
-        // Blink GPS LED if we don't have a fix
-        // ------------------------------------
-        update_GPS_light();
 
         g_gps->update();
 
@@ -276,7 +254,7 @@ test_gps(uint8_t argc, const Menu::arg *argv)
             cliSerial->printf_P(PSTR(", Lon "));
             print_latlon(cliSerial, g_gps->longitude);
             cliSerial->printf_P(PSTR(", Alt: %ldm, #sats: %d\n"),
-                            g_gps->altitude/100,
+                            g_gps->altitude_cm/100,
                             g_gps->num_sats);
             g_gps->new_data = false;
         }else{
@@ -299,8 +277,8 @@ test_ins(uint8_t argc, const Menu::arg *argv)
 
     ahrs.init();
     ins.init(AP_InertialSensor::COLD_START, 
-             ins_sample_rate,
-             flash_leds);
+             ins_sample_rate);
+    cliSerial->printf_P(PSTR("...done\n"));
 
     delay(50);
 
@@ -311,7 +289,7 @@ test_ins(uint8_t argc, const Menu::arg *argv)
 
         float test = accel.length() / GRAVITY_MSS;
 
-        cliSerial->printf_P(PSTR("a %7.4f %7.4f %7.4f g %7.4f %7.4f %7.4f t %74f | %7.4f\n"),
+        cliSerial->printf_P(PSTR("a %7.4f %7.4f %7.4f g %7.4f %7.4f %7.4f t %7.4f \n"),
             accel.x, accel.y, accel.z,
             gyro.x, gyro.y, gyro.z,
             test);
@@ -350,7 +328,6 @@ test_motors(uint8_t argc, const Menu::arg *argv)
     motors.set_frame_orientation(g.frame_orientation);
     motors.set_min_throttle(g.throttle_min);
     motors.set_mid_throttle(g.throttle_mid);
-    motors.set_max_throttle(g.throttle_max);
 
     // enable motors
     init_rc_out();

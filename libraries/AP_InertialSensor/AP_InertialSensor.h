@@ -49,21 +49,19 @@ public:
     /// @param style	The initialisation startup style.
     ///
     virtual void init( Start_style style,
-                       Sample_rate sample_rate,
-                       void        (*flash_leds_cb)(bool on));
+                       Sample_rate sample_rate);
 
     /// Perform cold startup initialisation for just the accelerometers.
     ///
     /// @note This should not be called unless ::init has previously
     ///       been called, as ::init may perform other work.
     ///
-    virtual void init_accel(void (*flash_leds_cb)(bool on));
+    virtual void init_accel();
 
 #if !defined( __AVR_ATmega1280__ )
     // perform accelerometer calibration including providing user instructions
     // and feedback
-    virtual bool calibrate_accel(void (*flash_leds_cb)(bool on),
-                                 AP_InertialSensor_UserInteract *interact,
+    virtual bool calibrate_accel(AP_InertialSensor_UserInteract *interact,
                                  float& trim_roll,
                                  float& trim_pitch);
 #endif
@@ -79,7 +77,7 @@ public:
     /// @note This should not be called unless ::init has previously
     ///       been called, as ::init may perform other work
     ///
-    virtual void init_gyro(void (*flash_leds_cb)(bool on));
+    virtual void init_gyro(void);
 
     /// Fetch the current gyro values
     ///
@@ -131,15 +129,22 @@ public:
         _board_orientation = orientation;
     }
 
+    // override default filter frequency
+    void set_default_filter(float filter_hz) {
+        if (!_mpu6000_filter.load()) {
+            _mpu6000_filter.set(filter_hz);
+        }
+    }
+
 protected:
 
     // sensor specific init to be overwritten by descendant classes
     virtual uint16_t        _init_sensor( Sample_rate sample_rate ) = 0;
 
     // no-save implementations of accel and gyro initialisation routines
-    virtual void  _init_accel(void (*flash_leds_cb)(bool on) = NULL);
+    virtual void  _init_accel();
 
-    virtual void _init_gyro(void (*flash_leds_cb)(bool on) = NULL);
+    virtual void _init_gyro();
 
 #if !defined( __AVR_ATmega1280__ )
     // Calibration routines borrowed from Rolfe Schmidt
@@ -184,5 +189,6 @@ protected:
 #include "AP_InertialSensor_PX4.h"
 #include "AP_InertialSensor_UserInteract_Stream.h"
 #include "AP_InertialSensor_UserInteract_MAVLink.h"
+#include "AP_InertialSensor_Flymaple.h"
 
 #endif // __AP_INERTIAL_SENSOR_H__

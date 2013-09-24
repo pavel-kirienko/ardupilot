@@ -71,49 +71,6 @@ bool SMACCMUARTDriver::tx_pending()
   return false;
 }
 
-/* SMACCM implementations of BetterStream virtual methods */
-void SMACCMUARTDriver::print_P(const prog_char_t *pstr)
-{
-  while (*pstr)
-    write(*pstr++);
-}
-
-void SMACCMUARTDriver::println_P(const prog_char_t *pstr)
-{
-  print_P(pstr);
-  println();
-}
-
-// XXX this will be changing, putting this on the stack hurts but
-// allows us to be easily re-entrant
-void SMACCMUARTDriver::printf(const char *fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  vprintf(fmt, ap);
-  va_end(ap);
-}
-
-void SMACCMUARTDriver::_printf_P(const prog_char *fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  vprintf(fmt, ap);
-  va_end(ap);
-}
-
-void SMACCMUARTDriver::vprintf(const char *pstr, va_list ap)
-{
-  char buf[128];
-  vsnprintf(buf, sizeof(buf), pstr, ap);
-  print(buf);
-}
-
-void SMACCMUARTDriver::vprintf_P(const prog_char *pstr, va_list ap)
-{
-  vprintf(pstr, ap);
-}
-
 /* SMACCM implementations of Stream virtual methods */
 int16_t SMACCMUARTDriver::available()
 {

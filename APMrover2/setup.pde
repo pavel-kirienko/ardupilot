@@ -109,7 +109,6 @@ setup_show(uint8_t argc, const Menu::arg *argv)
 	report_radio();
 	report_batt_monitor();
 	report_gains();
-	report_xtrack();
 	report_throttle();
 	report_modes();
 	report_compass();
@@ -412,10 +411,9 @@ setup_accel_scale(uint8_t argc, const Menu::arg *argv)
     cliSerial->println_P(PSTR("Initialising gyros"));
     ahrs.init();
     ins.init(AP_InertialSensor::COLD_START, 
-             ins_sample_rate,
-             flash_leds);
+             ins_sample_rate);
     AP_InertialSensor_UserInteractStream interact(hal.console);
-    if(ins.calibrate_accel(flash_leds, &interact, trim_roll, trim_pitch)) {
+    if(ins.calibrate_accel(&interact, trim_roll, trim_pitch)) {
         // reset ahrs's trim to suggested values from calibration routine
         ahrs.set_trim(Vector3f(trim_roll, trim_pitch, 0));
     }
@@ -429,9 +427,8 @@ setup_level(uint8_t argc, const Menu::arg *argv)
     cliSerial->println_P(PSTR("Initialising gyros"));
     ahrs.init();
     ins.init(AP_InertialSensor::COLD_START, 
-             ins_sample_rate,
-             flash_leds);
-    ins.init_accel(flash_leds);
+             ins_sample_rate);
+    ins.init_accel();
     ahrs.set_trim(Vector3f(0, 0, 0));
     return(0);
 }
@@ -507,28 +504,9 @@ static void report_gains()
 	cliSerial->printf_P(PSTR("Gains\n"));
 	print_divider();
 
-	cliSerial->printf_P(PSTR("servo steer:\n"));
-	print_PID(&g.pidServoSteer);
-
-	cliSerial->printf_P(PSTR("nav steer:\n"));
-	print_PID(&g.pidNavSteer);
-
 	cliSerial->printf_P(PSTR("speed throttle:\n"));
 	print_PID(&g.pidSpeedThrottle);
 
-	print_blanks(2);
-}
-
-static void report_xtrack()
-{
-	//print_blanks(2);
-	cliSerial->printf_P(PSTR("Crosstrack\n"));
-	print_divider();
-	// radio
-	cliSerial->printf_P(PSTR("XTRACK: %4.2f\n"
-						 "XTRACK angle: %d\n"),
-						 (float)g.crosstrack_gain,
-						 (int)g.crosstrack_entry_angle);
 	print_blanks(2);
 }
 

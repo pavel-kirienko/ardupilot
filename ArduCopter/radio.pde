@@ -5,23 +5,23 @@
 
 static void default_dead_zones()
 {
-    g.rc_1.set_dead_zone(60);
-    g.rc_2.set_dead_zone(60);
+    g.rc_1.set_default_dead_zone(30);
+    g.rc_2.set_default_dead_zone(30);
 #if FRAME_CONFIG == HELI_FRAME
-    g.rc_3.set_dead_zone(20);
-    g.rc_4.set_dead_zone(30);
+    g.rc_3.set_default_dead_zone(10);
+    g.rc_4.set_default_dead_zone(15);
 #else
-    g.rc_3.set_dead_zone(60);
-    g.rc_4.set_dead_zone(80);
+    g.rc_3.set_default_dead_zone(30);
+    g.rc_4.set_default_dead_zone(40);
 #endif
-    g.rc_6.set_dead_zone(0);
+    g.rc_6.set_default_dead_zone(0);
 }
 
 static void init_rc_in()
 {
     // set rc channel ranges
-    g.rc_1.set_angle(MAX_INPUT_ROLL_ANGLE);
-    g.rc_2.set_angle(MAX_INPUT_PITCH_ANGLE);
+    g.rc_1.set_angle(ROLL_PITCH_INPUT_MAX);
+    g.rc_2.set_angle(ROLL_PITCH_INPUT_MAX);
 #if FRAME_CONFIG == HELI_FRAME
     // we do not want to limit the movment of the heli's swash plate
     g.rc_3.set_range(0, 1000);
@@ -29,9 +29,6 @@ static void init_rc_in()
     g.rc_3.set_range(g.throttle_min, g.throttle_max);
 #endif
     g.rc_4.set_angle(4500);
-
-    // reverse: CW = left
-    // normal:  CW = left???
 
     g.rc_1.set_type(RC_CHANNEL_TYPE_ANGLE_RAW);
     g.rc_2.set_type(RC_CHANNEL_TYPE_ANGLE_RAW);
@@ -48,6 +45,9 @@ static void init_rc_in()
 #elif MOUNT == ENABLED
     update_aux_servo_function(&g.rc_5, &g.rc_6, &g.rc_7, &g.rc_8, &g.rc_10, &g.rc_11);
 #endif
+
+    // set default dead zones
+    default_dead_zones();
 }
 
  // init_rc_out -- initialise motors and check if pilot wants to perform ESC calibration
@@ -57,7 +57,6 @@ static void init_rc_out()
     motors.set_frame_orientation(g.frame_orientation);
     motors.Init();                                              // motor initialisation
     motors.set_min_throttle(g.throttle_min);
-    motors.set_max_throttle(g.throttle_max);
 
     for(uint8_t i = 0; i < 5; i++) {
         delay(20);
@@ -74,11 +73,10 @@ static void init_rc_out()
             g.esc_calibrate.set_and_save(1);
             // display message on console
             cliSerial->printf_P(PSTR("Entering ESC Calibration: please restart APM.\n"));
+            // turn on esc calibration notification
+            AP_Notify::flags.esc_calibration = true;
             // block until we restart
-            while(1) {
-                delay(200);
-                dancing_light();
-            }
+            while(1) { delay(5); }
         }else{
             cliSerial->printf_P(PSTR("ESC Calibration active: passing throttle through to ESCs.\n"));
             // clear esc flag

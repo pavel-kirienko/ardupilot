@@ -1,13 +1,23 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
+/*
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 /*
  *  main loop scheduler for APM
  *  Author: Andrew Tridgell, January 2013
  *
- *  This firmware is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation; either
- *  version 2.1 of the License, or (at your option) any later version.
  */
 
 #include <AP_HAL.h>
@@ -19,8 +29,8 @@ extern const AP_HAL::HAL& hal;
 const AP_Param::GroupInfo AP_Scheduler::var_info[] PROGMEM = {
     // @Param: DEBUG
     // @DisplayName: Scheduler debug level
-    // @Description: Set to non-zero to enable scheduler debug messages
-    // @Values: 0:Disabled,1:ShowSlipe,2:ShowOverruns
+    // @Description: Set to non-zero to enable scheduler debug messages. When set to show "Slips" the scheduler will display a message whenever a scheduled task is delayed due to too much CPU load. When set to ShowOverruns the scheduled will display a message whenever a task takes longer than the limit promised in the task table.
+    // @Values: 0:Disabled,1:ShowSlips,2:ShowOverruns
     // @User: Advanced
     AP_GROUPINFO("DEBUG",    0, AP_Scheduler, _debug, 0),
     AP_GROUPEND
@@ -86,11 +96,21 @@ void AP_Scheduler::run(uint16_t time_available)
                                               (unsigned)time_taken,
                                               (unsigned)_task_time_allowed);
                     }
-                    return;
+                    goto update_spare_ticks;
                 }
                 time_available -= time_taken;
             }
         }
+    }
+
+    // update number of spare microseconds
+    _spare_micros += time_available;
+
+update_spare_ticks:
+    _spare_ticks++;
+    if (_spare_ticks == 32) {
+        _spare_ticks /= 2;
+        _spare_micros /= 2;
     }
 }
 
@@ -106,3 +126,14 @@ uint16_t AP_Scheduler::time_available_usec(void)
     return _task_time_allowed - dt;
 }
 
+/*
+  calculate load average as a number from 0 to 1
+ */
+float AP_Scheduler::load_average(uint32_t tick_time_usec) const
+{
+    if (_spare_ticks == 0) {
+        return 0.0f;
+    }
+    uint32_t used_time = tick_time_usec - (_spare_micros/_spare_ticks);
+    return used_time / (float)tick_time_usec;
+}

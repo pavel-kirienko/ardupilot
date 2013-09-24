@@ -83,10 +83,9 @@ setup_accel_scale(uint8_t argc, const Menu::arg *argv)
     cliSerial->println_P(PSTR("Initialising gyros"));
     ahrs.init();
     ins.init(AP_InertialSensor::COLD_START, 
-             ins_sample_rate,
-             flash_leds);
+             ins_sample_rate);
     AP_InertialSensor_UserInteractStream interact(hal.console);
-    if(ins.calibrate_accel(flash_leds, &interact, trim_roll, trim_pitch)) {
+    if(ins.calibrate_accel(&interact, trim_roll, trim_pitch)) {
         // reset ahrs's trim to suggested values from calibration routine
         ahrs.set_trim(Vector3f(trim_roll, trim_pitch, 0));
     }
@@ -660,9 +659,8 @@ setup_accel(uint8_t argc, const Menu::arg *argv)
 {
     ahrs.init();
     ins.init(AP_InertialSensor::COLD_START, 
-             ins_sample_rate,
-             flash_leds);
-    ins.init_accel(flash_leds);
+             ins_sample_rate);
+    ins.init_accel();
     ahrs.set_trim(Vector3f(0,0,0));     // clear out saved trim
     report_ins();
     return(0);
@@ -1221,7 +1219,7 @@ print_radio_values()
     cliSerial->printf_P(PSTR("CH5: %d | %d\n"), (int)g.rc_5.radio_min, (int)g.rc_5.radio_max);
     cliSerial->printf_P(PSTR("CH6: %d | %d\n"), (int)g.rc_6.radio_min, (int)g.rc_6.radio_max);
     cliSerial->printf_P(PSTR("CH7: %d | %d\n"), (int)g.rc_7.radio_min, (int)g.rc_7.radio_max);
-    //cliSerial->printf_P(PSTR("CH8: %d | %d\n"), (int)g.rc_8.radio_min, (int)g.rc_8.radio_max);
+    cliSerial->printf_P(PSTR("CH8: %d | %d\n"), (int)g.rc_8.radio_min, (int)g.rc_8.radio_max);
 }
 
 static void
@@ -1356,7 +1354,7 @@ init_esc()
     while(1) {
         read_radio();
         delay(100);
-        dancing_light();
+        AP_Notify::flags.esc_calibration = true;
         motors.throttle_pass_through();
     }
 }

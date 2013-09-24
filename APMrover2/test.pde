@@ -140,9 +140,7 @@ test_radio(uint8_t argc, const Menu::arg *argv)
 		// ------------------------------
 		set_servos();
 
-        tuning_value = constrain_float(((float)(g.rc_7.radio_in - g.rc_7.radio_min) / (float)(g.rc_7.radio_max - g.rc_7.radio_min)),0,1);
-                
-		cliSerial->printf_P(PSTR("IN 1: %d\t2: %d\t3: %d\t4: %d\t5: %d\t6: %d\t7: %d\t8: %d  Tuning = %2.3f\n"),
+		cliSerial->printf_P(PSTR("IN 1: %d\t2: %d\t3: %d\t4: %d\t5: %d\t6: %d\t7: %d\t8: %d\n"),
 							channel_steer->control_in,
 							g.rc_2.control_in,
 							channel_throttle->control_in,
@@ -150,8 +148,7 @@ test_radio(uint8_t argc, const Menu::arg *argv)
 							g.rc_5.control_in,
 							g.rc_6.control_in,
 							g.rc_7.control_in,
-							g.rc_8.control_in,
-                                                        tuning_value);
+							g.rc_8.control_in);
 
 		if(cliSerial->available() > 0){
 			return (0);
@@ -311,7 +308,7 @@ test_modeswitch(uint8_t argc, const Menu::arg *argv)
 
 	cliSerial->printf_P(PSTR("Control CH "));
 
-	cliSerial->println(MODE_CHANNEL, DEC);
+	cliSerial->println(MODE_CHANNEL, BASE_DEC);
 
 	while(1){
 		delay(20);
@@ -350,17 +347,13 @@ test_gps(uint8_t argc, const Menu::arg *argv)
 	while(1){
 		delay(100);
 
-		// Blink GPS LED if we don't have a fix
-		// ------------------------------------
-		update_GPS_light();
-
 		g_gps->update();
 
 		if (g_gps->new_data){
 			cliSerial->printf_P(PSTR("Lat: %ld, Lon %ld, Alt: %ldm, #sats: %d\n"),
 					g_gps->latitude,
 					g_gps->longitude,
-					g_gps->altitude/100,
+					g_gps->altitude_cm/100,
 					g_gps->num_sats);
 		}else{
 			cliSerial->printf_P(PSTR("."));
@@ -378,8 +371,7 @@ test_ins(uint8_t argc, const Menu::arg *argv)
 	ahrs.init();
     ahrs.set_fly_forward(true);
 	ins.init(AP_InertialSensor::COLD_START, 
-             ins_sample_rate, 
-             flash_leds);
+             ins_sample_rate);
     ahrs.reset();
 
 	print_hit_enter();
@@ -444,8 +436,7 @@ test_mag(uint8_t argc, const Menu::arg *argv)
 
     // we need the AHRS initialised for this test
 	ins.init(AP_InertialSensor::COLD_START, 
-             ins_sample_rate, 
-             flash_leds);
+             ins_sample_rate);
     ahrs.reset();
 
 	int counter = 0;

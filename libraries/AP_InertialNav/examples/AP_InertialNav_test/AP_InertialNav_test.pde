@@ -9,6 +9,7 @@
 
 #include <AP_GPS.h>             // ArduPilot GPS library
 #include <AP_ADC.h>             // ArduPilot Mega Analog to Digital Converter Library
+#include <AP_ADC_AnalogSource.h>
 #include <AP_Baro.h>            // ArduPilot Mega Barometer Library
 #include <Filter.h>
 #include <AP_Compass.h>         // ArduPilot Mega Magnetometer Library
@@ -16,25 +17,24 @@
 #include <AP_InertialSensor.h>  // ArduPilot Mega Inertial Sensor (accel & gyro) Library
 #include <AP_AHRS.h>
 #include <AP_Airspeed.h>
+#include <AP_Vehicle.h>
+#include <DataFlash.h>
 #include <AC_PID.h>             // PID library
 #include <APM_PI.h>             // PID library
 #include <AP_Buffer.h>          // ArduPilot general purpose FIFO buffer
 #include <GCS_MAVLink.h>
+#include <AP_Notify.h>
 
 #include <AP_InertialNav.h>
 const AP_HAL::HAL& hal = AP_HAL_BOARD_DRIVER;
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_APM2
 
-#define A_LED_PIN 27
-#define C_LED_PIN 25
 AP_InertialSensor_MPU6000 ins;
 AP_Baro_MS5611 baro(&AP_Baro_MS5611::spi);
 
 #else
 
-#define A_LED_PIN 37
-#define C_LED_PIN 35
 AP_ADC_ADS7844 adc;
 AP_InertialSensor_Oilpan ins(&adc);
 AP_Baro_BMP085 baro;
@@ -50,23 +50,15 @@ AP_InertialNav inertialnav(&ahrs, &ins, &baro, &gps);
 
 uint32_t last_update;
 
-static void flash_leds(bool on) {
-    hal.gpio->write(A_LED_PIN, on);
-    hal.gpio->write(C_LED_PIN, ~on);
-}
-
 void setup(void)
 {
     hal.console->println_P(PSTR("AP_InertialNav test startup..."));
-    hal.gpio->pinMode(A_LED_PIN, GPIO_OUTPUT);
-    hal.gpio->pinMode(C_LED_PIN, GPIO_OUTPUT);
 
     gps = &auto_gps;
     gps->init(hal.uartB, GPS::GPS_ENGINE_AIRBORNE_2G);
 
     ins.init(AP_InertialSensor::COLD_START, 
-			 AP_InertialSensor::RATE_100HZ,
-			 flash_leds);
+			 AP_InertialSensor::RATE_100HZ);
 
     ahrs.set_compass(&compass);
 

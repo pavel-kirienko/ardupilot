@@ -17,6 +17,7 @@
 #include <poll.h>
 
 #include "UARTDriver.h"
+#include "AnalogIn.h"
 #include "Storage.h"
 #include "RCOutput.h"
 #include "RCInput.h"
@@ -49,6 +50,16 @@ void PX4Scheduler::init(void *unused)
     pthread_attr_setschedpolicy(&thread_attr, SCHED_FIFO);
 
 	pthread_create(&_timer_thread_ctx, &thread_attr, (pthread_startroutine_t)&PX4::PX4Scheduler::_timer_thread, this);
+
+    // the UART thread runs at a medium priority
+	pthread_attr_init(&thread_attr);
+	pthread_attr_setstacksize(&thread_attr, 2048);
+
+	param.sched_priority = APM_UART_PRIORITY;
+	(void)pthread_attr_setschedparam(&thread_attr, &param);
+    pthread_attr_setschedpolicy(&thread_attr, SCHED_FIFO);
+
+	pthread_create(&_uart_thread_ctx, &thread_attr, (pthread_startroutine_t)&PX4::PX4Scheduler::_uart_thread, this);
 
     // the IO thread runs at lower priority
 	pthread_attr_init(&thread_attr);
@@ -168,9 +179,9 @@ void PX4Scheduler::resume_timer_procs()
     }
 }
 
-void PX4Scheduler::reboot() 
+void PX4Scheduler::reboot(bool hold_in_bootloader) 
 {
-	up_systemreset();
+	systemreset(hold_in_bootloader);
 }
 
 void PX4Scheduler::_run_timers(bool called_from_timer_thread)
@@ -196,6 +207,9 @@ void PX4Scheduler::_run_timers(bool called_from_timer_thread)
     if (_failsafe != NULL) {
         _failsafe(tnow);
     }
+
+    // process analog input
+    ((PX4AnalogIn *)hal.analogin)->_timer_tick();
 
     _in_timer_proc = false;
 }
@@ -239,7 +253,7 @@ void PX4Scheduler::_run_io(void)
     _in_io_proc = false;
 }
 
-void *PX4Scheduler::_io_thread(void)
+void *PX4Scheduler::_uart_thread(void)
 {
     while (!_px4_thread_should_exit) {
         poll(NULL, 0, 1);
@@ -248,6 +262,14 @@ void *PX4Scheduler::_io_thread(void)
         ((PX4UARTDriver *)hal.uartA)->_timer_tick();
         ((PX4UARTDriver *)hal.uartB)->_timer_tick();
         ((PX4UARTDriver *)hal.uartC)->_timer_tick();
+    }
+    return NULL;
+}
+
+void *PX4Scheduler::_io_thread(void)
+{
+    while (!_px4_thread_should_exit) {
+        poll(NULL, 0, 1);
 
         // process any pending storage writes
         ((PX4Storage *)hal.storage)->_timer_tick();

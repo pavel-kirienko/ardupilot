@@ -37,7 +37,8 @@ public:
         GPS_TYPE_UBLOX = 1,
         GPS_TYPE_MTK   = 2,
         GPS_TYPE_MTK16 = 3,
-        GPS_TYPE_MTK19 = 4
+        GPS_TYPE_MTK19 = 4,
+        GPS_TYPE_NMEA  = 5
     };
 
 	struct sitl_fdm state;
@@ -51,6 +52,7 @@ public:
 	AP_Float mag_noise;   // in mag units (earth field is 818)
 	AP_Float aspd_noise;  // in m/s 
 	AP_Float mag_error;   // in degrees
+    AP_Float servo_rate;  // servo speed in degrees/second
 
 	AP_Float drift_speed; // degrees/second/minute
 	AP_Float drift_time;  // period in minutes

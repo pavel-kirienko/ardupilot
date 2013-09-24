@@ -18,12 +18,12 @@
 
 // failsafe
 // ----------------------
-#define FAILSAFE_NONE   0
-#define FAILSAFE_SHORT  1
-#define FAILSAFE_LONG   2
-#define FAILSAFE_GCS    3
-#define FAILSAFE_SHORT_TIME 1500        // Miliiseconds
-#define FAILSAFE_LONG_TIME  20000       // Miliiseconds
+enum failsafe_state {
+    FAILSAFE_NONE=0,
+    FAILSAFE_SHORT=1,
+    FAILSAFE_LONG=2,
+    FAILSAFE_GCS=3
+};
 
 
 // active altitude sensor
@@ -60,8 +60,10 @@ enum FlightMode {
     CIRCLE        = 1,
     STABILIZE     = 2,
     TRAINING      = 3,
+    ACRO          = 4,
     FLY_BY_WIRE_A = 5,
     FLY_BY_WIRE_B = 6,
+    CRUISE        = 7,
     AUTO          = 10,
     RTL           = 11,
     LOITER        = 12,
@@ -157,7 +159,8 @@ enum log_messages {
     LOG_ATTITUDE_MSG,
     LOG_MODE_MSG,
     LOG_COMPASS_MSG,
-    MAX_NUM_LOGS
+    LOG_TECS_MSG,
+    MAX_NUM_LOGS // always at the end
 };
 
 #define MASK_LOG_ATTITUDE_FAST          (1<<0)
@@ -171,6 +174,8 @@ enum log_messages {
 #define MASK_LOG_CMD                    (1<<8)
 #define MASK_LOG_CURRENT                (1<<9)
 #define MASK_LOG_COMPASS                (1<<10)
+#define MASK_LOG_TECS                   (1<<11)
+#define MASK_LOG_CAMERA                 (1<<12)
 
 // Waypoint Modes
 // ----------------
@@ -236,6 +241,7 @@ enum log_messages {
 #define CONFIG_INS_MPU6000 2
 #define CONFIG_INS_STUB    3
 #define CONFIG_INS_PX4     4
+#define CONFIG_INS_FLYMAPLE 5
 
 // barometer driver types
 #define AP_BARO_BMP085   1
@@ -250,8 +256,10 @@ enum log_messages {
 
 // altitude control algorithms
 enum {
-    ALT_CONTROL_DEFAULT=0,
-    ALT_CONTROL_NON_AIRSPEED=1
+    ALT_CONTROL_DEFAULT      = 0,
+    ALT_CONTROL_NON_AIRSPEED = 1,
+    ALT_CONTROL_TECS         = 2,
+    ALT_CONTROL_AIRSPEED     = 3
 };
 
 // attitude controller choice

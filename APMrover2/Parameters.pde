@@ -2,11 +2,6 @@
 
 /*
   ArduPlane parameter definitions
-
-  This firmware is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation; either
-  version 2.1 of the License, or (at your option) any later version.
 */
 
 #define GSCALAR(v, name, def) { g.v.vtype, name, Parameters::k_param_ ## v, &g.v, {def_value:def} }
@@ -48,15 +43,15 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Param: BATT_VOLT_PIN
     // @DisplayName: Battery Voltage sensing pin
-    // @Description: Setting this to 0 ~ 13 will enable battery current sensing on pins A0 ~ A13. For the 3DR power brick on APM2.5 it should be set to 13. On the PX4 it should be set to 100.
-    // @Values: -1:Disabled, 0:A0, 1:A1, 13:A13, 100:PX4
+    // @Description: Setting this to 0 ~ 13 will enable battery current sensing on pins A0 ~ A13. For the 3DR power brick on APM2.5 it should be set to 13. On the PX4 it should be set to 100. On the Pixhawk powered from the PM connector it should be set to 2.
+    // @Values: -1:Disabled, 0:A0, 1:A1, 2:Pixhawk, 13:A13, 100:PX4
     // @User: Standard
     GSCALAR(battery_volt_pin,    "BATT_VOLT_PIN",    1),
 
     // @Param: BATT_CURR_PIN
     // @DisplayName: Battery Current sensing pin
-    // @Description: Setting this to 0 ~ 13 will enable battery current sensing on pins A0 ~ A13. For the 3DR power brick on APM2.5 it should be set to 12. On the PX4 it should be set to 101. 
-    // @Values: -1:Disabled, 1:A1, 2:A2, 12:A12, 101:PX4
+    // @Description: Setting this to 0 ~ 13 will enable battery current sensing on pins A0 ~ A13. For the 3DR power brick on APM2.5 it should be set to 12. On the PX4 it should be set to 101. On the Pixhawk by the PM connector it should be set to 3.
+    // @Values: -1:Disabled, 1:A1, 2:A2, 3:Pixhawk, 12:A12, 101:PX4
     // @User: Standard
     GSCALAR(battery_curr_pin,    "BATT_CURR_PIN",    2),
 
@@ -111,13 +106,13 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Param: VOLT_DIVIDER
     // @DisplayName: Voltage Divider
-    // @Description: Used to convert the voltage of the voltage sensing pin (BATT_VOLT_PIN) to the actual battery's voltage (pin_voltage * VOLT_DIVIDER). For the 3DR Power brick, this should be set to 10.1. For the PX4 using the PX4IO power supply this should be set to 1.
+    // @Description: Used to convert the voltage of the voltage sensing pin (BATT_VOLT_PIN) to the actual battery's voltage (pin_voltage * VOLT_DIVIDER). For the 3DR Power brick on APM2 or Pixhawk this should be set to 10.1. For the PX4 using the PX4IO power supply this should be set to 1.
     // @User: Advanced
 	GSCALAR(volt_div_ratio,         "VOLT_DIVIDER",     VOLT_DIV_RATIO),
 
     // @Param: AMP_PER_VOLT
     // @DisplayName: Current Amps per volt
-    // @Description: Used to convert the voltage on the current sensing pin (BATT_CURR_PIN) to the actual current being consumed in amps (curr pin voltage * INPUT_VOLTS/1024 * AMP_PER_VOLT )
+    // @Description: Used to convert the voltage on the current sensing pin (BATT_CURR_PIN) to the actual current being consumed in amps. For the 3DR Power brick on APM2 or Pixhawk this should be set to 17
     // @User: Advanced
 	GSCALAR(curr_amp_per_volt,      "AMP_PER_VOLT",     CURR_AMP_PER_VOLT),
 
@@ -127,23 +122,6 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Units: mAh
 	// @User: Standard
 	GSCALAR(pack_capacity,          "BATT_CAPACITY",    HIGH_DISCHARGE),
-
-    // @Param: XTRK_GAIN_SC
-    // @DisplayName: Crosstrack Gain
-    // @Description: This controls how hard the Rover tries to follow the lines between waypoints, as opposed to driving directly to the next waypoint. The value is the scale between distance off the line and angle to meet the line (in Degrees * 100)
-    // @Range: 0 2000
-    // @Increment: 1
-    // @User: Standard
-	GSCALAR(crosstrack_gain,        "XTRK_GAIN_SC",     XTRACK_GAIN_SCALED),
-
-    // @Param: XTRK_ANGLE_CD
-    // @DisplayName: Crosstrack Entry Angle
-    // @Description: Maximum angle used to correct for track following.
-    // @Units: centi-Degrees
-    // @Range: 0 9000
-    // @Increment: 1
-    // @User: Standard
-	GSCALAR(crosstrack_entry_angle, "XTRK_ANGLE_CD",    XTRACK_ENTRY_ANGLE_CENTIDEGREE),
 
 	// @Param: AUTO_TRIGGER_PIN
 	// @DisplayName: Auto mode trigger pin
@@ -226,6 +204,28 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Group: RC8_
     // @Path: ../libraries/RC_Channel/RC_Channel.cpp
 	GGROUP(rc_8,                    "RC8_", RC_Channel_aux),
+
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
+    // @Group: RC9_
+    // @Path: ../libraries/RC_Channel/RC_Channel.cpp,../libraries/RC_Channel/RC_Channel_aux.cpp
+    GGROUP(rc_9,                    "RC9_", RC_Channel_aux),
+#endif
+
+#if CONFIG_HAL_BOARD == HAL_BOARD_APM2 || CONFIG_HAL_BOARD == HAL_BOARD_PX4
+    // @Group: RC10_
+    // @Path: ../libraries/RC_Channel/RC_Channel.cpp,../libraries/RC_Channel/RC_Channel_aux.cpp
+    GGROUP(rc_10,                    "RC10_", RC_Channel_aux),
+
+    // @Group: RC11_
+    // @Path: ../libraries/RC_Channel/RC_Channel.cpp,../libraries/RC_Channel/RC_Channel_aux.cpp
+    GGROUP(rc_11,                    "RC11_", RC_Channel_aux),
+#endif
+
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
+    // @Group: RC12_
+    // @Path: ../libraries/RC_Channel/RC_Channel.cpp,../libraries/RC_Channel/RC_Channel_aux.cpp
+    GGROUP(rc_12,                    "RC12_", RC_Channel_aux),
+#endif
 
     // @Param: THR_MIN
     // @DisplayName: Minimum Throttle
@@ -348,6 +348,12 @@ const AP_Param::Info var_info[] PROGMEM = {
 	// @User: Standard
 	GSCALAR(sonar_debounce,   "SONAR_DEBOUNCE",    2),
 
+    // @Param: LEARN_CH
+    // @DisplayName: Learning channel
+    // @Description: RC Channel to use for learning waypoints
+    // @User: Advanced
+	GSCALAR(learn_channel,    "LEARN_CH",       7),
+
     // @Param: MODE_CH
     // @DisplayName: Mode channel
     // @Description: RC Channel to use for driving mode control
@@ -408,8 +414,19 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @User: Standard
 	GSCALAR(waypoint_radius,        "WP_RADIUS",        2.0f),
 
-	GGROUP(pidNavSteer,             "HDNG2STEER_",  PID),
-	GGROUP(pidServoSteer,           "STEER2SRV_",   PID),
+    // @Param: TURN_MAX_G
+    // @DisplayName: Turning maximum G force
+    // @Description: The maximum turning acceleration (in units of gravities) that the rover can handle while remaining stable. The navigation code will keep the lateral acceleration below this level to avoid rolling over or slipping the wheels in turns
+    // @Units: gravities
+    // @Range: 0.2 10
+    // @Increment: 0.1
+    // @User: Standard
+	GSCALAR(turn_max_g,             "TURN_MAX_G",      2.0f),
+
+    // @Group: STEER2SRV_
+    // @Path: ../libraries/APM_Control/AP_SteerController.cpp
+	GOBJECT(steerController,        "STEER2SRV_",   AP_SteerController),
+
 	GGROUP(pidSpeedThrottle,        "SPEED2THR_", PID),
 
 	// variables not in the g class which contain EEPROM saved variables
@@ -430,8 +447,17 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Path: ../libraries/AP_RCMapper/AP_RCMapper.cpp
     GOBJECT(rcmap,                 "RCMAP_",         RCMapper),
 
+    // @Group: SR0_
+    // @Path: GCS_Mavlink.pde
 	GOBJECT(gcs0,					"SR0_",     GCS_MAVLINK),
+
+    // @Group: SR3_
+    // @Path: GCS_Mavlink.pde
 	GOBJECT(gcs3,					"SR3_",     GCS_MAVLINK),
+
+    // @Group: NAVL1_
+    // @Path: ../libraries/AP_L1_Control/AP_L1_Control.cpp
+    GOBJECT(L1_controller,         "NAVL1_",   AP_L1_Control),
 
     // @Group: SONAR_
     // @Path: ../libraries/AP_RangeFinder/AP_RangeFinder_analog.cpp
@@ -454,6 +480,18 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Group: AHRS_
     // @Path: ../libraries/AP_AHRS/AP_AHRS.cpp
     GOBJECT(ahrs,                   "AHRS_",    AP_AHRS),
+
+#if CAMERA == ENABLED
+    // @Group: CAM_
+    // @Path: ../libraries/AP_Camera/AP_Camera.cpp
+    GOBJECT(camera,                  "CAM_", AP_Camera),
+#endif
+
+#if MOUNT == ENABLED
+    // @Group: MNT_
+    // @Path: ../libraries/AP_Mount/AP_Mount.cpp
+    GOBJECT(camera_mount,           "MNT_", AP_Mount),
+#endif
 
 	AP_VAREND
 };
@@ -478,4 +516,11 @@ static void load_parameters(void)
 
 	    cliSerial->printf_P(PSTR("load_all took %luus\n"), micros() - before);
 	}
+
+    // set a lower default filter frequency for rovers, due to very
+    // high vibration levels on rough surfaces
+    ins.set_default_filter(5);
+
+    // set a more reasonable default NAVL1_PERIOD for rovers
+    L1_controller.set_default_period(8);
 }

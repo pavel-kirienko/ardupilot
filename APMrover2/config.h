@@ -36,9 +36,6 @@
  // default choices for a 1280. We can't fit everything in, so we 
  // make some popular choices by default
  #define LOGGING_ENABLED DISABLED
- #ifndef MOUNT2
- # define MOUNT2 DISABLED
- #endif
  #ifndef MOUNT
  # define MOUNT DISABLED
  #endif
@@ -63,61 +60,28 @@
 #if CONFIG_HAL_BOARD == HAL_BOARD_APM1
 # define CONFIG_INS_TYPE   CONFIG_INS_OILPAN
 # define CONFIG_COMPASS  AP_COMPASS_HMC5843
-# define A_LED_PIN        37
-# define B_LED_PIN        36
-# define C_LED_PIN        35
-# define LED_ON           HIGH
-# define LED_OFF          LOW
-# define SLIDE_SWITCH_PIN 40
-# define PUSHBUTTON_PIN   41
-# define USB_MUX_PIN      -1
 # define BATTERY_PIN_1	  0
 # define CURRENT_PIN_1	  1
 #elif CONFIG_HAL_BOARD == HAL_BOARD_APM2
 # define CONFIG_INS_TYPE   CONFIG_INS_MPU6000
 # define CONFIG_COMPASS  AP_COMPASS_HMC5843
-# define CONFIG_PUSHBUTTON DISABLED
-# define A_LED_PIN        27
-# define B_LED_PIN        26
-# define C_LED_PIN        25
-# define LED_ON           LOW
-# define LED_OFF          HIGH
-# define SLIDE_SWITCH_PIN (-1)
-# define PUSHBUTTON_PIN   (-1)
-# define CLI_SLIDER_ENABLED DISABLED
-# define USB_MUX_PIN 23
 # define BATTERY_PIN_1	  1
 # define CURRENT_PIN_1	  2
 #elif CONFIG_HAL_BOARD == HAL_BOARD_AVR_SITL
 # define CONFIG_INS_TYPE CONFIG_INS_STUB
 # define CONFIG_COMPASS  AP_COMPASS_HIL
-# define CONFIG_PUSHBUTTON DISABLED
-# define A_LED_PIN        27
-# define B_LED_PIN        26
-# define C_LED_PIN        25
-# define LED_ON           LOW
-# define LED_OFF          HIGH
-# define SLIDE_SWITCH_PIN (-1)
-# define PUSHBUTTON_PIN   (-1)
-# define CLI_SLIDER_ENABLED DISABLED
-# define USB_MUX_PIN -1
 # define BATTERY_PIN_1	  1
 # define CURRENT_PIN_1	  2
 #elif CONFIG_HAL_BOARD == HAL_BOARD_PX4
 # define CONFIG_INS_TYPE   CONFIG_INS_PX4
 # define CONFIG_COMPASS  AP_COMPASS_PX4
-# define CONFIG_PUSHBUTTON DISABLED
-# define A_LED_PIN        27
-# define B_LED_PIN        26
-# define C_LED_PIN        25
-# define LED_ON           LOW
-# define LED_OFF          HIGH
-# define SLIDE_SWITCH_PIN (-1)
-# define PUSHBUTTON_PIN   (-1)
-# define CLI_SLIDER_ENABLED DISABLED
-# define USB_MUX_PIN -1
 # define BATTERY_PIN_1	  -1
 # define CURRENT_PIN_1	  -1
+#elif CONFIG_HAL_BOARD == HAL_BOARD_FLYMAPLE
+# define CONFIG_INS_TYPE   CONFIG_INS_FLYMAPLE
+# define CONFIG_COMPASS  AP_COMPASS_HMC5843
+# define BATTERY_PIN_1     20
+# define CURRENT_PIN_1	   19
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -286,7 +250,14 @@
 // MOUNT (ANTENNA OR CAMERA)
 //
 #ifndef MOUNT
-# define MOUNT		DISABLED
+# define MOUNT		ENABLED
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
+// CAMERA control
+//
+#ifndef CAMERA
+# define CAMERA ENABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -368,12 +339,14 @@
     MASK_LOG_ATTITUDE_MED | \
     MASK_LOG_GPS | \
     MASK_LOG_PM | \
+    MASK_LOG_CTUN | \
     MASK_LOG_NTUN | \
     MASK_LOG_MODE | \
     MASK_LOG_CMD | \
     MASK_LOG_SONAR | \
     MASK_LOG_COMPASS | \
-    MASK_LOG_CURRENT
+    MASK_LOG_CURRENT | \
+    MASK_LOG_CAMERA
 
 
 

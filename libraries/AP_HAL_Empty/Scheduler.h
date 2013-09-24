@@ -16,6 +16,7 @@ public:
                 uint16_t min_time_ms);
 
     void     register_timer_process(AP_HAL::TimedProc);
+    void     register_io_process(AP_HAL::TimedProc);
     void     suspend_timer_procs();
     void     resume_timer_procs();
 
@@ -31,7 +32,7 @@ public:
     void     system_initialized();
 
     void     panic(const prog_char_t *errormsg);
-    void     reboot();
+    void     reboot(bool hold_in_bootloader);
 
 };
 

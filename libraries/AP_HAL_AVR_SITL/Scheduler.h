@@ -34,7 +34,7 @@ public:
     bool     system_initializing();
     void     system_initialized();
 
-    void     reboot();
+    void     reboot(bool hold_in_bootloader);
     void     panic(const prog_char_t *errormsg);
 
     bool     interrupts_are_blocked(void) { return _nested_atomic_ctr != 0; }
@@ -64,6 +64,11 @@ private:
     static uint8_t _num_io_procs;
     static bool    _in_timer_proc;
     static bool    _in_io_proc;
+#ifdef __CYGWIN__
+    static double _cyg_freq;
+    static long _cyg_start;
+    static double _cyg_sec();
+#endif
 
     bool _initialized;
 

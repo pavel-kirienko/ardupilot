@@ -90,6 +90,10 @@ public:
         k_param_mixing_gain,
         k_param_scheduler,
         k_param_relay,
+        k_param_takeoff_throttle_delay,
+        k_param_skip_gyro_cal,
+        k_param_auto_fbw_steer,
+        k_param_waypoint_max_radius,
 
         // 110: Telemetry control
         //
@@ -103,12 +107,14 @@ public:
 
         // 120: Fly-by-wire control
         //
-        k_param_flybywire_airspeed_min = 120,
-        k_param_flybywire_airspeed_max,
+        k_param_airspeed_min = 120,
+        k_param_airspeed_max,
         k_param_FBWB_min_altitude_cm,  // 0=disabled, minimum value for altitude in cm (for first time try 30 meters = 3000 cm)
         k_param_flybywire_elev_reverse,
         k_param_alt_control_algorithm,
         k_param_flybywire_climb_rate,
+        k_param_acro_roll_rate,
+        k_param_acro_pitch_rate,
 
         //
         // 130: Sensor parameters
@@ -188,13 +194,15 @@ public:
         k_param_rc_12,
         k_param_fs_batt_voltage,
         k_param_fs_batt_mah,
+        k_param_short_fs_timeout,
+        k_param_long_fs_timeout,
 
         //
         // 200: Feed-forward gains
         //
         k_param_kff_pitch_compensation = 200, // unused
         k_param_kff_rudder_mix,
-        k_param_kff_pitch_to_throttle,
+        k_param_kff_pitch_to_throttle, // unused
         k_param_kff_throttle_to_pitch,
         k_param_scaling_speed,
 
@@ -231,16 +239,17 @@ public:
         k_param_yawController,
         k_param_L1_controller,
         k_param_rcmap,
+        k_param_TECS_controller,
 
         //
         // 240: PID Controllers
         k_param_pidNavRoll = 240, // unused
         k_param_pidServoRoll, // unused
         k_param_pidServoPitch, // unused
-        k_param_pidNavPitchAirspeed,
-        k_param_pidServoRudder,
-        k_param_pidTeThrottle,
-        k_param_pidNavPitchAltitude,
+        k_param_pidNavPitchAirspeed, // unused
+        k_param_pidServoRudder, // unused
+        k_param_pidTeThrottle, // unused
+        k_param_pidNavPitchAltitude, // unused
         k_param_pidWheelSteer,
 
         // 254,255: reserved
@@ -269,6 +278,13 @@ public:
     // navigation controller type. See AP_Navigation::ControllerType
     AP_Int8  nav_controller;
 
+    // attitude controller type.
+    AP_Int8  att_controller;
+
+    // skip gyro calibration
+    AP_Int8  skip_gyro_cal;
+    AP_Int8  auto_fbw_steer;
+
     // Estimation
     //
     AP_Float altitude_mix;
@@ -280,6 +296,7 @@ public:
     AP_Int8 command_total;
     AP_Int8 command_index;
     AP_Int16 waypoint_radius;
+    AP_Int16 waypoint_max_radius;
     AP_Int16 loiter_radius;
 
 #if GEOFENCE_ENABLED == ENABLED
@@ -292,26 +309,22 @@ public:
 
     // Fly-by-wire
     //
-    AP_Int16 flybywire_airspeed_min;
-    AP_Int16 flybywire_airspeed_max;
     AP_Int8 flybywire_elev_reverse;
     AP_Int8 flybywire_climb_rate;
 
     // Throttle
     //
-    AP_Int8 throttle_min;
-    AP_Int8 throttle_max;
-    AP_Int8 throttle_slewrate;
     AP_Int8 throttle_suppress_manual;
     AP_Int8 throttle_passthru_stabilize;
     AP_Int8 throttle_fs_enabled;
     AP_Int16 throttle_fs_value;
-    AP_Int8 throttle_cruise;
     AP_Int8 throttle_nudge;
 
     // Failsafe
     AP_Int8 short_fs_action;
     AP_Int8 long_fs_action;
+    AP_Float short_fs_timeout;
+    AP_Float long_fs_timeout;
     AP_Int8 gcs_heartbeat_fs_enabled;
     AP_Float fs_batt_voltage;
     AP_Float fs_batt_mah;
@@ -329,9 +342,9 @@ public:
     // Navigational maneuvering limits
     //
     AP_Int16 roll_limit_cd;
-    AP_Int16 pitch_limit_max_cd;
-    AP_Int16 pitch_limit_min_cd;
     AP_Int16 alt_offset;
+    AP_Int16 acro_roll_rate;
+    AP_Int16 acro_pitch_rate;
 
     // Misc
     //
@@ -376,6 +389,7 @@ public:
     AP_Int8 stick_mixing;
     AP_Float takeoff_throttle_min_speed;
     AP_Float takeoff_throttle_min_accel;
+    AP_Int8 takeoff_throttle_delay;
     AP_Int8 level_roll_limit;
 
     // RC channels
@@ -398,16 +412,7 @@ public:
     RC_Channel_aux rc_12;
 #endif
 
-    // Attitude to servo controllers
-    //
-    AP_RollController  rollController;
-    AP_PitchController pitchController;
-    AP_YawController   yawController;
-
     // PID controllers
-    PID         pidNavPitchAirspeed;
-    PID         pidTeThrottle;
-    PID         pidNavPitchAltitude;
     PID         pidWheelSteer;
 
     Parameters() :
@@ -431,11 +436,9 @@ public:
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4
         rc_12                                   (CH_12),
 #endif
+
         // PID controller    initial P        initial I        initial D        initial imax
         //-----------------------------------------------------------------------------------
-        pidNavPitchAirspeed (NAV_PITCH_ASP_P, NAV_PITCH_ASP_I, NAV_PITCH_ASP_D, NAV_PITCH_ASP_INT_MAX_CMSEC),
-        pidTeThrottle       (THROTTLE_TE_P,   THROTTLE_TE_I,   THROTTLE_TE_D,   THROTTLE_TE_INT_MAX),
-        pidNavPitchAltitude (NAV_PITCH_ALT_P, NAV_PITCH_ALT_I, NAV_PITCH_ALT_D, NAV_PITCH_ALT_INT_MAX_CM),
         pidWheelSteer         (0, 0, 0, 0)
 
         {}

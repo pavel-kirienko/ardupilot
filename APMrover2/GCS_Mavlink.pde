@@ -191,7 +191,7 @@ static NOINLINE void send_extended_status1(mavlink_channel_t chan, uint16_t pack
         control_sensors_present,
         control_sensors_enabled,
         control_sensors_health,
-        (uint16_t)(load * 1000),
+        (uint16_t)(scheduler.load_average(20000) * 1000),
         battery_voltage1 * 1000, // mV
         battery_current,        // in 10mA units
         battery_remaining,      // in %
@@ -227,7 +227,7 @@ static void NOINLINE send_location(mavlink_channel_t chan)
         fix_time,
         current_loc.lat,                // in 1E7 degrees
         current_loc.lng,                // in 1E7 degrees
-        g_gps->altitude * 10,             // millimeters above sea level
+        g_gps->altitude_cm * 10,             // millimeters above sea level
         (current_loc.alt - home.alt) * 10,           // millimeters above ground
         g_gps->velocity_north() * 100,  // X speed cm/s (+ve North)
         g_gps->velocity_east()  * 100,  // Y speed cm/s (+ve East)
@@ -237,17 +237,16 @@ static void NOINLINE send_location(mavlink_channel_t chan)
 
 static void NOINLINE send_nav_controller_output(mavlink_channel_t chan)
 {
-    int16_t bearing = nav_bearing / 100;
     mavlink_msg_nav_controller_output_send(
         chan,
-        nav_steer_cd / 1.0e2,
-        0,
-        bearing,
-        target_bearing / 100,
+        lateral_acceleration, // use nav_roll to hold demanded Y accel
+        g_gps->ground_speed_cm * 0.01f * ins.get_gyro().z, // use nav_pitch to hold actual Y accel
+        nav_controller->nav_bearing_cd() * 0.01f,
+        nav_controller->target_bearing_cd() * 0.01f,
         wp_distance,
         0,
         groundspeed_error,
-        crosstrack_error);
+        nav_controller->crosstrack_error());
 }
 
 static void NOINLINE send_gps_raw(mavlink_channel_t chan)
@@ -258,14 +257,16 @@ static void NOINLINE send_gps_raw(mavlink_channel_t chan)
         g_gps->status(),
         g_gps->latitude,      // in 1E7 degrees
         g_gps->longitude,     // in 1E7 degrees
-        g_gps->altitude * 10, // in mm
+        g_gps->altitude_cm * 10, // in mm
         g_gps->hdop,
         65535,
-        g_gps->ground_speed,  // cm/s
-        g_gps->ground_course, // 1/100 degrees,
+        g_gps->ground_speed_cm,  // cm/s
+        g_gps->ground_course_cd, // 1/100 degrees,
         g_gps->num_sats);
 }
 
+
+#if HIL_MODE != HIL_MODE_DISABLED
 static void NOINLINE send_servo_out(mavlink_channel_t chan)
 {
     // normalized values scaled to -10000 to 10000
@@ -285,6 +286,7 @@ static void NOINLINE send_servo_out(mavlink_channel_t chan)
         0,
         receiver_rssi);
 }
+#endif
 
 static void NOINLINE send_radio_in(mavlink_channel_t chan)
 {
@@ -338,8 +340,8 @@ static void NOINLINE send_vfr_hud(mavlink_channel_t chan)
 {
     mavlink_msg_vfr_hud_send(
         chan,
-        (float)g_gps->ground_speed / 100.0,
-        (float)g_gps->ground_speed / 100.0,
+        (float)g_gps->ground_speed_cm / 100.0,
+        (float)g_gps->ground_speed_cm / 100.0,
         (ahrs.yaw_sensor / 100) % 360,
         (uint16_t)(100 * channel_throttle->norm_output()),
         current_loc.alt / 100.0,
@@ -469,22 +471,13 @@ static bool telemetry_delayed(mavlink_channel_t chan)
     if (tnow > (uint32_t)g.telem_delay) {
         return false;
     }
-#if USB_MUX_PIN > 0
-    if (chan == MAVLINK_COMM_0 && usb_connected) {
-        // this is an APM2 with USB telemetry
+    if (chan == MAVLINK_COMM_0 && hal.gpio->usb_connected()) {
+        // this is USB telemetry, so won't be an Xbee
         return false;
     }
     // we're either on the 2nd UART, or no USB cable is connected
-    // we need to delay telemetry
+    // we need to delay telemetry by the TELEM_DELAY time
     return true;
-#else
-    if (chan == MAVLINK_COMM_0) {
-        // we're on the USB port
-        return false;
-    }
-    // don't send telemetry yet
-    return true;
-#endif
 }
 
 
@@ -536,8 +529,10 @@ static bool mavlink_try_send_message(mavlink_channel_t chan, enum ap_message id,
         break;
 
     case MSG_SERVO_OUT:
+#if HIL_MODE != HIL_MODE_DISABLED
         CHECK_PAYLOAD_SIZE(RC_CHANNELS_SCALED);
         send_servo_out(chan);
+#endif
         break;
 
     case MSG_RADIO_IN:
@@ -698,15 +693,87 @@ void mavlink_send_text(mavlink_channel_t chan, gcs_severity severity, const char
 }
 
 const AP_Param::GroupInfo GCS_MAVLINK::var_info[] PROGMEM = {
+    // @Param: RAW_SENS
+    // @DisplayName: Raw sensors
+    // @Description: Raw sensors stream rate. This is the MAVLink target stream rate in Hz.
+    // @Units: Hz
+    // @Range: 0 20
+    // @Increment: 1
+    // @User: Advanced
     AP_GROUPINFO("RAW_SENS", 0, GCS_MAVLINK, streamRateRawSensors,      0),
+
+    // @Param: EXT_STAT
+    // @DisplayName: Extended status
+    // @Description: Extended status stream rate. This is the MAVLink target stream rate in Hz.
+    // @Units: Hz
+    // @Range: 0 20
+    // @Increment: 1
+    // @User: Advanced
 	AP_GROUPINFO("EXT_STAT", 1, GCS_MAVLINK, streamRateExtendedStatus,  0),
+
+    // @Param: RC_CHAN
+    // @DisplayName: RC Channel
+    // @Description: RC Channel stream rate. This is the MAVLink target stream rate in Hz.
+    // @Units: Hz
+    // @Range: 0 20
+    // @Increment: 1
+    // @User: Advanced
     AP_GROUPINFO("RC_CHAN",  2, GCS_MAVLINK, streamRateRCChannels,      0),
+
+    // @Param: RAW_CTRL
+    // @DisplayName: Raw controllers
+    // @Description: Raw controllers stream rate. This is the MAVLink target stream rate in Hz.
+    // @Units: Hz
+    // @Range: 0 20
+    // @Increment: 1
+    // @User: Advanced
 	AP_GROUPINFO("RAW_CTRL", 3, GCS_MAVLINK, streamRateRawController,   0),
+
+    // @Param: POSITION
+    // @DisplayName: Position
+    // @Description: vehicle position stream rate. This is the MAVLink target stream rate in Hz.
+    // @Units: Hz
+    // @Range: 0 20
+    // @Increment: 1
+    // @User: Advanced
 	AP_GROUPINFO("POSITION", 4, GCS_MAVLINK, streamRatePosition,        0),
+
+    // @Param: EXTRA1
+    // @DisplayName: Extra1
+    // @Description: Extra1 stream rate. This is the MAVLink target stream rate in Hz.
+    // @Units: Hz
+    // @Range: 0 20
+    // @Increment: 1
+    // @User: Advanced
 	AP_GROUPINFO("EXTRA1",   5, GCS_MAVLINK, streamRateExtra1,          0),
+
+    // @Param: EXTRA2
+    // @DisplayName: Extra2
+    // @Description: Extra1 stream rate. This is the MAVLink target stream rate in Hz.
+    // @Units: Hz
+    // @Range: 0 20
+    // @Increment: 1
+    // @User: Advanced
 	AP_GROUPINFO("EXTRA2",   6, GCS_MAVLINK, streamRateExtra2,          0),
+
+    // @Param: EXTRA3
+    // @DisplayName: Extra3
+    // @Description: Extra3 stream rate. This is the MAVLink target stream rate in Hz.
+    // @Units: Hz
+    // @Range: 0 20
+    // @Increment: 1
+    // @User: Advanced
 	AP_GROUPINFO("EXTRA3",   7, GCS_MAVLINK, streamRateExtra3,          0),
+
+    // @Param: PARAMS
+    // @DisplayName: Parameters
+    // @Description: Parameters stream rate. This is the MAVLink target stream rate in Hz.
+    // @Units: Hz
+    // @Range: 0 20
+    // @Increment: 1
+    // @User: Advanced
 	AP_GROUPINFO("PARAMS",   8, GCS_MAVLINK, streamRateParams,          0),
+
     AP_GROUPEND
 };
 
@@ -766,7 +833,7 @@ GCS_MAVLINK::update(void)
         if (mavlink_parse_char(chan, c, &msg, &status)) {
             // we exclude radio packets to make it possible to use the
             // CLI over the radio
-            if (msg.msgid != MAVLINK_MSG_ID_RADIO) {
+            if (msg.msgid != MAVLINK_MSG_ID_RADIO && msg.msgid != MAVLINK_MSG_ID_RADIO_STATUS) {
                 mavlink_active = true;
             }
             handleMessage(&msg);
@@ -1068,8 +1135,9 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
             break;
 
         case MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN:
-            if (packet.param1 == 1) {
-                reboot_apm();
+            if (packet.param1 == 1 || packet.param1 == 3) {
+                // when packet.param1 == 3 we reboot to hold in bootloader
+                hal.scheduler->reboot(packet.param1 == 3);
                 result = MAV_RESULT_ACCEPTED;
             }
             break;
@@ -1704,6 +1772,20 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
 		}
 #endif // HIL_MODE
 
+#if CAMERA == ENABLED
+    case MAVLINK_MSG_ID_DIGICAM_CONFIGURE:
+    {
+        camera.configure_msg(msg);
+        break;
+    }
+
+    case MAVLINK_MSG_ID_DIGICAM_CONTROL:
+    {
+        camera.control_msg(msg);
+        break;
+    }
+#endif // CAMERA == ENABLED
+
 #if MOUNT == ENABLED
     case MAVLINK_MSG_ID_MOUNT_CONFIGURE:
 		{
@@ -1725,6 +1807,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
 #endif // MOUNT == ENABLED
 
     case MAVLINK_MSG_ID_RADIO:
+    case MAVLINK_MSG_ID_RADIO_STATUS:
         {
             mavlink_radio_t packet;
             mavlink_msg_radio_decode(msg, &packet);
@@ -1871,6 +1954,7 @@ static void mavlink_delay_cb()
         last_50hz = tnow;
         gcs_update();
         gcs_data_stream_send();
+        notify.update();
     }
     if (tnow - last_5s > 5000) {
         last_5s = tnow;
