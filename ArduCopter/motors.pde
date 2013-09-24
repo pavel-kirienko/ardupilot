@@ -41,7 +41,7 @@ static void init_arm_motors()
     // Flag used to track if we have armed the motors the first time.
     // This is used to decide if we should run the ground_start routine
     // which calibrates the IMU
-    static bool did_ground_start = false;
+//     static bool did_ground_start = false;
 
     // disable cpu failsafe because initialising everything takes a while
     failsafe_disable();
@@ -82,16 +82,16 @@ static void init_arm_motors()
     // -----------------------
     reset_I_all();
 
-    if(did_ground_start == false) {
-        did_ground_start = true;
-        startup_ground();
-    }
+//     if(did_ground_start == false) {
+//         did_ground_start = true;
+//         startup_ground();
+//     }
 
 #if HIL_MODE != HIL_MODE_ATTITUDE
     // read Baro pressure at ground -
     // this resets Baro for more accuracy
     //-----------------------------------
-    init_barometer();
+//     init_barometer();
 #endif
 
     // temp hack

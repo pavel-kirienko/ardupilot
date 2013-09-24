@@ -1902,6 +1902,7 @@ mission_failed:
         if(msg->sysid != g.sysid_my_gcs) break;                         // Only accept control from our gcs
         mavlink_rc_channels_override_t packet;
         int16_t v[8];
+        static const int NUM_CHANNELS = 4;                              // We can override channels from 0 to 3
         mavlink_msg_rc_channels_override_decode(msg, &packet);
 
         if (mavlink_check_target(packet.target_system,packet.target_component))
@@ -1911,10 +1912,8 @@ mission_failed:
         v[1] = packet.chan2_raw;
         v[2] = packet.chan3_raw;
         v[3] = packet.chan4_raw;
-        v[4] = packet.chan5_raw;
-        v[5] = packet.chan6_raw;
-        v[6] = packet.chan7_raw;
-        v[7] = packet.chan8_raw;
+        // Clear override on these:
+        v[4] = v[5] = v[6] = v[7] = 0;
 #if COURIERDRONE_MANUAL_THRUST_YAW
         v[2] = v[3] = 0;        // clear override
 #endif
@@ -1926,7 +1925,7 @@ mission_failed:
 
         if (!crdr_manual)
         {
-            hal.rcin->set_overrides(v, 8);
+            hal.rcin->set_overrides(v, NUM_CHANNELS);
             // record that rc are overwritten so we can trigger a failsafe if we lose contact with groundstation
             ap.rc_override_active = true;
         }
